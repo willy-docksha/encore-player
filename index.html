@@ -106,7 +106,11 @@ ol.queue { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-d
 .queue li.bad .t { color: var(--danger); }
 .num { font: .8rem var(--f-mono); color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
 .queue .open { border: none; background: transparent; text-align: left; padding: 7px 4px; display: flex; gap: 8px; align-items: center; min-width: 0; }
+.queue .open .txt { display: flex; flex-direction: column; min-width: 0; }
 .queue .open .t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.queue .open .note, .nownote { font: .78rem var(--f-mono); color: var(--loop); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nownote { margin: -6px 0 10px; }
+.plname { font-family: var(--f-display); font-weight: 500; font-size: 1rem; margin: -2px 0 10px; }
 .queue li.cur .t { font-weight: 500; }
 .queue .acts { display: flex; gap: 0; }
 .queue .acts button { border: none; background: transparent; color: var(--muted); padding: 4px 6px; font-size: .85rem; }
@@ -133,6 +137,7 @@ kbd { font: .75rem var(--f-mono); border: 1px solid var(--line); border-bottom-w
           <span class="pos" id="pos"></span>
           <button id="toggleVideo" type="button" hidden>Sembunyikan video</button>
         </div>
+        <p class="nownote" id="nowNote" hidden></p>
         <div class="media audio" id="media"><div id="yt"></div><div class="note" id="note">Tambahkan link di playlist untuk mulai</div></div>
         <audio id="audio" preload="auto"></audio>
 
@@ -185,7 +190,8 @@ kbd { font: .75rem var(--f-mono); border: 1px solid var(--line); border-bottom-w
 
     <section class="panel pl">
       <div class="plhead"><h2>Playlist</h2><span class="count" id="count"></span></div>
-      <textarea id="links" placeholder="Tempel link di sini, satu per baris. Contoh:
+      <p class="plname" id="plName" hidden></p>
+      <textarea id="links" placeholder="Tempel link atau langsung satu chat daftar lagu. Contoh:
 https://www.youtube.com/watch?v=0H1mnB2CC6k
 https://drive.google.com/file/d/14xNMEuDK9hIHrftAdaYrLiQVAIFyb4Oo/view"></textarea>
       <div class="row" style="margin-top:8px">
@@ -237,11 +243,35 @@ function parse(raw) {
   }
   return null;
 }
+// Reads pasted text (e.g. a WhatsApp song list): every link becomes a song; the numbered line above it
+// ("1) Judul lagu") becomes its title, lines between that and the link become notes ("Chorus saja"),
+// and the lines before the first song become the playlist name.
+const URL_RE = /https?:\/\/[^\s<>"']+/g;
+const clean = l => l.replace(/[*_~`]+/g, '').replace(/\s+/g, ' ').trim();
 function extract(text) {
-  const urls = text.match(/https?:\/\/[^\s<>"']+/g) || [];
   const ok = [], bad = [];
-  urls.forEach(url => { const p = parse(url); p ? ok.push({ url, ...p, title: null }) : bad.push(url); });
-  return { ok, bad };
+  let block = [], name = null;
+  for (const raw of text.split(/\r?\n/)) {
+    const urls = raw.match(URL_RE);
+    if (!urls) { const l = clean(raw); if (l) block.push(l); continue; }
+    const before = clean(raw.slice(0, raw.indexOf(urls[0])));
+    if (before) block.push(before);
+    const numbered = block.findLastIndex(l => /^\d{1,3}\s*[).:-]\s*\S/.test(l));
+    let title = null, note = null;
+    if (numbered >= 0) {
+      title = block[numbered].replace(/^\d{1,3}\s*[).:-]\s*/, '');
+      note = block.slice(numbered + 1).join(' · ') || null;
+    } else if (block.length === 1 && block[0].length <= 120) title = block[0];
+    if (title) title = title.replace(/[\s:\-–—>|]+$/, '') || null;
+    if (name === null && !ok.length && !bad.length) name = block.slice(0, numbered >= 0 ? numbered : block.length).join(' · ') || '';
+    for (const u of urls) {
+      const url = u.replace(/[)*_.,;!]+$/, '');
+      const p = parse(url);
+      p ? ok.push({ url, ...p, title: urls.length === 1 ? title : null, note: urls.length === 1 ? note : null }) : bad.push(url);
+    }
+    block = [];
+  }
+  return { ok, bad, name: name || null };
 }
 
 // ---------- titles (via local server) ----------
@@ -260,16 +290,19 @@ function addLinks(replace) {
   if (!ok.length) { m.textContent = 'Tidak ada link YouTube atau Google Drive yang dikenali.'; m.className = 'msg'; m.hidden = false; return; }
   if (replace) { stop(); list = []; idx = -1; cur = null; history = []; }
   const wasEmpty = !list.length;
+  if (wasEmpty) setName(extract($('#links').value).name);
   list.push(...ok); save(); renderQueue();
   ok.forEach(fetchTitle);
   $('#links').value = '';
-  m.textContent = `${ok.length} link ditambahkan` + (bad.length ? ` · ${bad.length} link dilewati karena bukan YouTube/Drive` : '');
+  const fromChat = ok.filter(x => x.title).length;
+  m.textContent = `${ok.length} lagu ditambahkan` + (fromChat ? ` (${fromChat} judul dari chat)` : '') + (bad.length ? ` · ${bad.length} link dilewati karena bukan YouTube/Drive` : '');
   m.className = 'msg info'; m.hidden = false;
   if (wasEmpty) playIndex(0, false);
 }
 $('#add').onclick = () => addLinks(false);
 $('#replace').onclick = () => addLinks(true);
-$('#clearAll').onclick = () => { stop(); list = []; idx = -1; cur = null; save(); renderQueue(); showEmptyPlayer(); };
+$('#clearAll').onclick = () => { stop(); list = []; idx = -1; cur = null; setName(null); save(); renderQueue(); showEmptyPlayer(); };
+function setName(n) { store.set('lp-name', n); const el = $('#plName'); el.textContent = n || ''; el.hidden = !n; }
 
 function removeAt(i) {
   const playing = i === idx;
@@ -295,7 +328,10 @@ function renderQueue() {
     const num = document.createElement('span'); num.className = 'num'; num.textContent = i === idx ? (isPlaying() ? '▶' : '❚❚') : i + 1;
     const b = document.createElement('button'); b.type = 'button'; b.className = 'open'; b.title = it.url;
     b.innerHTML = `<span class="badge">${it.type === 'yt' ? 'YT' : 'Drive'}</span>`;
-    const t = document.createElement('span'); t.className = 't'; t.textContent = it.title || it.url; b.append(t);
+    const txt = document.createElement('span'); txt.className = 'txt';
+    const t = document.createElement('span'); t.className = 't'; t.textContent = it.title || it.url; txt.append(t);
+    if (it.note) { const n = document.createElement('span'); n.className = 'note'; n.textContent = it.note; txt.append(n); }
+    b.append(txt);
     b.onclick = () => playIndex(i, true);
     const acts = document.createElement('span'); acts.className = 'acts';
     [['↑', 'Naik', () => move(i, -1), i === 0], ['↓', 'Turun', () => move(i, 1), i === list.length - 1], ['✕', 'Hapus', () => removeAt(i), false]]
@@ -335,6 +371,7 @@ function playIndex(i, autoplay = true) {
   A = B = null; updateAB();
   $('#srcBadge').textContent = it.type === 'yt' ? 'YouTube' : 'Drive';
   $('#title').textContent = it.title || 'Memuat…';
+  $('#nowNote').textContent = it.note || ''; $('#nowNote').hidden = !it.note;
   fetchTitle(it);
   const media = $('#media');
   if (it.type === 'yt') {
@@ -504,7 +541,7 @@ if ('mediaSession' in navigator) {
 }
 
 // boot
-paintModes(); applyRate(rate); renderQueue();
+paintModes(); applyRate(rate); setName(store.get('lp-name', null)); renderQueue();
 list.forEach(fetchTitle);
 if (list.length) playIndex(Math.min(Math.max(idx, 0), list.length - 1), false); else showEmptyPlayer();
 </script>

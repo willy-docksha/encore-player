@@ -3,6 +3,7 @@
 Sekali lagi, sampai hafal. Media player untuk latihan lagu dari link YouTube dan Google Drive.
 
 - Playlist dari daftar link (YouTube & Google Drive bisa dicampur), auto next
+- Bisa langsung tempel chat daftar lagu (mis. dari WhatsApp): judul `1) Nama Lagu`, catatan seperti *Chorus saja*, dan nama ibadah ikut terbaca
 - Prev / Play / Pause / Stop / Next, lompat ±5s dan ±10s
 - Ulang: tanpa ulang, ulang 1 lagu, ulang semua · acak
 - Kecepatan 0.25×–2×, loop A–B
