@@ -1,0 +1,7 @@
+{
+  "regions": ["sin1"],
+  "rewrites": [
+    { "source": "/drive", "destination": "/api/drive" },
+    { "source": "/title", "destination": "/api/title" }
+  ]
+}
