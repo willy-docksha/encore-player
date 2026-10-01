@@ -37,8 +37,9 @@ body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(-
 @media (max-width: 860px) { .grid { grid-template-columns: minmax(0, 1fr); } .grid > .col { display: contents; } #player { order: 1; } .pl { order: 2; } .tools { order: 3; } }
 @media (max-width: 520px) {
   h1 { font-size: 1.35rem; }
-  .transport [data-skip="-10"], .transport [data-skip="10"] { display: none; }
-  .transport button { min-width: 46px; padding: 10px 8px; }
+  .transport button { min-width: 52px; padding: 10px 8px; }
+  .modes { gap: 6px; }
+  .modes button { font-size: .78rem; padding: 6px 8px; }
   .queue .open { padding: 10px 4px; }
   .queue .acts button { padding: 8px 8px; }
   .keys { display: none; }
@@ -66,7 +67,10 @@ button.on { background: var(--loop); border-color: var(--loop); color: #1b1f27; 
 .pos { font: .8rem var(--f-mono); color: var(--muted); flex: none; }
 .media { position: relative; width: 100%; max-width: 100%; aspect-ratio: 16/9; border-radius: 8px; overflow: hidden; background: #000; }
 .media.audio { aspect-ratio: auto; height: 84px; background: var(--bg); }
-.media.collapsed { height: 0; aspect-ratio: auto; }
+/* YouTube requires an embedded player of at least 200x200; quality is chosen by YouTube, not settable */
+.media.yt { aspect-ratio: auto; height: 200px; background: var(--bg); }
+.media.yt #yt { right: auto; width: 200px; }
+.media.yt .note { left: 200px; padding: 0 12px; text-align: center; font-size: .78rem; }
 .media .note { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font: .85rem var(--f-mono); }
 #yt, #yt iframe { position: absolute; inset: 0; width: 100%; height: 100%; }
 
@@ -77,22 +81,21 @@ button.on { background: var(--loop); border-color: var(--loop); color: #1b1f27; 
 .knob { position: absolute; top: 9px; width: 16px; height: 16px; margin-left: -8px; border-radius: 50%; background: var(--accent); border: 3px solid var(--panel); box-shadow: 0 0 0 1px var(--line); left: 0; }
 .times { display: flex; justify-content: space-between; font: .85rem var(--f-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
 
-.transport { display: flex; justify-content: center; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+.transport { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 10px; }
+.transport .tr { display: flex; justify-content: center; gap: 6px; }
+@media (min-width: 521px) { .transport { flex-direction: row; justify-content: center; gap: 18px; } }
 .transport button { min-width: 44px; padding: 8px 8px; font-family: var(--f-mono); }
 .transport .big { min-width: 48px; font-size: 1.05rem; }
 #play { min-width: 84px; font-size: 1rem; padding: 10px 14px; }
-.modes { display: flex; justify-content: center; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
-.modes button { font-size: .82rem; padding: 5px 10px; }
-.seg { display: inline-flex; }
-.seg button { border-radius: 0; margin-left: -1px; }
-.seg button:first-child { border-radius: 8px 0 0 8px; margin-left: 0; }
-.seg button:last-child { border-radius: 0 8px 8px 0; }
-.seg button.sel { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); position: relative; }
+.modes { display: flex; justify-content: center; gap: 8px; margin-top: 12px; flex-wrap: nowrap; }
+.modes button { font-size: .82rem; padding: 5px 10px; white-space: nowrap; }
 
 .tools { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
 .rate { font: 500 1.4rem var(--f-mono); min-width: 70px; text-align: center; font-variant-numeric: tabular-nums; }
 input[type=range] { width: 100%; accent-color: var(--accent); }
 .presets button { padding: 4px 8px; font: .8rem var(--f-mono); }
+.tools .center { text-align: center; }
+.tools .center .row { justify-content: center; }
 .small { font: .82rem var(--f-mono); color: var(--muted); margin: 8px 0 0; font-variant-numeric: tabular-nums; }
 
 textarea { width: 100%; min-height: 110px; resize: vertical; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--line);
@@ -110,6 +113,9 @@ ol.queue { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-d
 .queue .open .t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .queue .open .note, .nownote { font: .78rem var(--f-mono); color: var(--loop); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .nownote { margin: -6px 0 10px; }
+.editor { margin-top: 10px; }
+.dl { font: .7rem var(--f-mono); color: var(--muted); flex: none; }
+.dl.ok { color: #3fa66b; }
 .plname { font-family: var(--f-display); font-weight: 500; font-size: 1rem; margin: -2px 0 10px; }
 .queue li.cur .t { font-weight: 500; }
 .queue .acts { display: flex; gap: 0; }
@@ -135,7 +141,6 @@ kbd { font: .75rem var(--f-mono); border: 1px solid var(--line); border-bottom-w
           <span class="badge" id="srcBadge">—</span>
           <span class="title" id="title">Belum ada lagu</span>
           <span class="pos" id="pos"></span>
-          <button id="toggleVideo" type="button" hidden>Sembunyikan video</button>
         </div>
         <p class="nownote" id="nowNote" hidden></p>
         <div class="media audio" id="media"><div id="yt"></div><div class="note" id="note">Tambahkan link di playlist untuk mulai</div></div>
@@ -145,19 +150,21 @@ kbd { font: .75rem var(--f-mono); border: 1px solid var(--line); border-bottom-w
         <div class="times"><span id="cur">0:00</span><span id="dur">0:00</span></div>
 
         <div class="transport">
-          <button type="button" class="big" id="prev" title="Sebelumnya (P)">⏮</button>
-          <button type="button" data-skip="-10">−10s</button>
-          <button type="button" data-skip="-5">−5s</button>
-          <button type="button" id="play" class="primary">Play</button>
-          <button type="button" class="big" id="stop" title="Stop (S)">⏹</button>
-          <button type="button" data-skip="5">+5s</button>
-          <button type="button" data-skip="10">+10s</button>
-          <button type="button" class="big" id="next" title="Berikutnya (N)">⏭</button>
+          <div class="tr">
+            <button type="button" class="big" id="prev" title="Sebelumnya (P)">⏮</button>
+            <button type="button" id="play" class="primary">Play</button>
+            <button type="button" class="big" id="stop" title="Stop (S)">⏹</button>
+            <button type="button" class="big" id="next" title="Berikutnya (N)">⏭</button>
+          </div>
+          <div class="tr">
+            <button type="button" data-skip="-10">−10s</button>
+            <button type="button" data-skip="-5">−5s</button>
+            <button type="button" data-skip="5">+5s</button>
+            <button type="button" data-skip="10">+10s</button>
+          </div>
         </div>
         <div class="modes">
-          <span class="seg" role="group" aria-label="Pengulangan">
-            <button type="button" data-repeat="off">Tanpa ulang</button><button type="button" data-repeat="one">🔂 Ulang 1 lagu</button><button type="button" data-repeat="all">🔁 Ulang semua</button>
-          </span>
+          <button type="button" id="repeat" title="Ganti mode ulang (R)">🔁 Tanpa ulang</button>
           <button type="button" id="shuffle">Acak: mati</button>
           <button type="button" id="autonext" class="on">Auto next: nyala</button>
         </div>
@@ -165,7 +172,7 @@ kbd { font: .75rem var(--f-mono); border: 1px solid var(--line); border-bottom-w
       </section>
 
       <section class="tools">
-        <div class="panel">
+        <div class="panel center">
           <h2>Kecepatan</h2>
           <div class="row"><button type="button" id="slower">−</button><span class="rate" id="rate">1.00×</span><button type="button" id="faster">+</button></div>
           <div class="row presets" style="margin-top:8px">
@@ -174,7 +181,7 @@ kbd { font: .75rem var(--f-mono); border: 1px solid var(--line); border-bottom-w
           </div>
           <p class="small">Berlaku untuk semua lagu</p>
         </div>
-        <div class="panel">
+        <div class="panel center">
           <h2>Loop A–B</h2>
           <div class="row"><button type="button" id="setA">Set A</button><button type="button" id="setB">Set B</button><button type="button" id="clearAB">Hapus</button></div>
           <p class="small" id="abText">Belum ada loop</p>
@@ -191,17 +198,23 @@ kbd { font: .75rem var(--f-mono); border: 1px solid var(--line); border-bottom-w
     <section class="panel pl">
       <div class="plhead"><h2>Playlist</h2><span class="count" id="count"></span></div>
       <p class="plname" id="plName" hidden></p>
-      <textarea id="links" placeholder="Tempel link atau langsung satu chat daftar lagu. Contoh:
-https://www.youtube.com/watch?v=0H1mnB2CC6k
-https://drive.google.com/file/d/14xNMEuDK9hIHrftAdaYrLiQVAIFyb4Oo/view"></textarea>
-      <div class="row" style="margin-top:8px">
-        <button type="button" class="primary" id="add">Tambah ke playlist</button>
-        <button type="button" id="replace">Ganti playlist</button>
-        <button type="button" id="clearAll" style="margin-left:auto">Kosongkan</button>
+      <button type="button" class="primary" id="openEditor">+ Tambah ke playlist</button>
+      <div class="editor" id="editor" hidden>
+        <textarea id="links" placeholder="Tempel link atau langsung satu chat daftar lagu. Contoh:
+1) Menikmati Kasih
+https://drive.google.com/file/d/…
+2) Tetap Mengasihi
+https://youtu.be/…"></textarea>
+        <div class="row" style="margin-top:8px">
+          <button type="button" class="primary" id="add">Tambah</button>
+          <button type="button" id="replace">Ganti playlist</button>
+          <button type="button" id="cancelEditor">Batal</button>
+        </div>
       </div>
       <p class="msg" id="addMsg" hidden></p>
       <ol class="queue" id="queue"></ol>
-      <p class="empty" id="qEmpty">Playlist masih kosong.</p>
+      <p class="small" id="offlineHint" hidden>✓ = tersimpan di perangkat, bisa diputar tanpa internet</p>
+      <p class="empty" id="qEmpty">Playlist masih kosong. Klik "Tambah ke playlist", lalu tempel link atau chat daftar lagu.</p>
     </section>
   </div>
 </div>
@@ -220,7 +233,7 @@ let autonext = store.get('lp-autonext', true);
 let rate = store.get('lp-rate', 1);
 let cur = null;                               // item currently loaded
 let yt = null, ytReady = false, ytApi = null, pendingYT = null;
-let A = null, B = null, history = [];
+let A = null, B = null, history = [], loadTok = 0;
 
 const fmt = t => { t = Math.max(0, Math.floor(t || 0)); const h = Math.floor(t/3600), m = Math.floor(t%3600/60), s = t%60;
   return (h ? h + ':' + String(m).padStart(2,'0') : m) + ':' + String(s).padStart(2,'0'); };
@@ -287,7 +300,7 @@ async function fetchTitle(item) {
 function addLinks(replace) {
   const { ok, bad } = extract($('#links').value);
   const m = $('#addMsg');
-  if (!ok.length) { m.textContent = 'Tidak ada link YouTube atau Google Drive yang dikenali.'; m.className = 'msg'; m.hidden = false; return; }
+  if (!ok.length) { clearTimeout(addLinks.t); m.textContent = 'Tidak ada link YouTube atau Google Drive yang dikenali.'; m.className = 'msg'; m.hidden = false; return; }
   if (replace) { stop(); list = []; idx = -1; cur = null; history = []; }
   const wasEmpty = !list.length;
   if (wasEmpty) setName(extract($('#links').value).name);
@@ -297,11 +310,19 @@ function addLinks(replace) {
   const fromChat = ok.filter(x => x.title).length;
   m.textContent = `${ok.length} lagu ditambahkan` + (fromChat ? ` (${fromChat} judul dari chat)` : '') + (bad.length ? ` · ${bad.length} link dilewati karena bukan YouTube/Drive` : '');
   m.className = 'msg info'; m.hidden = false;
+  clearTimeout(addLinks.t); addLinks.t = setTimeout(() => m.hidden = true, 6000);
+  toggleEditor(false);
   if (wasEmpty) playIndex(0, false);
+  pruneCache(); prefetchAll();
 }
+function toggleEditor(open) {
+  $('#editor').hidden = !open; $('#openEditor').hidden = open;
+  if (open) $('#links').focus(); else $('#links').value = '';
+}
+$('#openEditor').onclick = () => { $('#addMsg').hidden = true; toggleEditor(true); };
+$('#cancelEditor').onclick = () => toggleEditor(false);
 $('#add').onclick = () => addLinks(false);
 $('#replace').onclick = () => addLinks(true);
-$('#clearAll').onclick = () => { stop(); list = []; idx = -1; cur = null; setName(null); save(); renderQueue(); showEmptyPlayer(); };
 function setName(n) { store.set('lp-name', n); const el = $('#plName'); el.textContent = n || ''; el.hidden = !n; }
 
 function removeAt(i) {
@@ -309,7 +330,7 @@ function removeAt(i) {
   list.splice(i, 1);
   if (i < idx) idx--;
   if (playing) { if (list.length) playIndex(Math.min(idx, list.length - 1), isPlaying()); else { stop(); idx = -1; cur = null; showEmptyPlayer(); } }
-  save(); renderQueue();
+  save(); renderQueue(); pruneCache();
 }
 function move(i, d) {
   const j = i + d; if (j < 0 || j >= list.length) return;
@@ -321,6 +342,7 @@ function move(i, d) {
 function renderQueue() {
   const ol = $('#queue'); ol.innerHTML = '';
   $('#qEmpty').hidden = list.length > 0;
+  $('#offlineHint').hidden = !hasCache || !list.some(x => x.type === 'drive');
   $('#count').textContent = list.length ? `${list.length} lagu` : '';
   list.forEach((it, i) => {
     const li = document.createElement('li');
@@ -328,10 +350,11 @@ function renderQueue() {
     const num = document.createElement('span'); num.className = 'num'; num.textContent = i === idx ? (isPlaying() ? '▶' : '❚❚') : i + 1;
     const b = document.createElement('button'); b.type = 'button'; b.className = 'open'; b.title = it.url;
     b.innerHTML = `<span class="badge">${it.type === 'yt' ? 'YT' : 'Drive'}</span>`;
+    if (it.type === 'drive') { const d = document.createElement('span'); d.dataset.dl = it.id; paintDl(d, it.id); b.append(d); }
     const txt = document.createElement('span'); txt.className = 'txt';
     const t = document.createElement('span'); t.className = 't'; t.textContent = it.title || it.url; txt.append(t);
     if (it.note) { const n = document.createElement('span'); n.className = 'note'; n.textContent = it.note; txt.append(n); }
-    b.append(txt);
+    b.insertBefore(txt, b.querySelector('[data-dl]'));
     b.onclick = () => playIndex(i, true);
     const acts = document.createElement('span'); acts.className = 'acts';
     [['↑', 'Naik', () => move(i, -1), i === 0], ['↓', 'Turun', () => move(i, 1), i === list.length - 1], ['✕', 'Hapus', () => removeAt(i), false]]
@@ -360,7 +383,7 @@ function showMsg(t) { const m = $('#msg'); m.textContent = t; m.hidden = !t; }
 function showEmptyPlayer() {
   $('#title').textContent = 'Belum ada lagu'; $('#srcBadge').textContent = '—'; $('#pos').textContent = '';
   $('#media').className = 'media audio'; $('#yt').style.visibility = 'hidden'; $('#note').hidden = false;
-  $('#note').textContent = 'Tambahkan link di playlist untuk mulai'; $('#toggleVideo').hidden = true; render();
+  $('#note').textContent = 'Tambahkan link di playlist untuk mulai'; render();
 }
 
 function playIndex(i, autoplay = true) {
@@ -373,21 +396,30 @@ function playIndex(i, autoplay = true) {
   $('#title').textContent = it.title || 'Memuat…';
   $('#nowNote').textContent = it.note || ''; $('#nowNote').hidden = !it.note;
   fetchTitle(it);
-  const media = $('#media');
+  const media = $('#media'), tok = ++loadTok;
   if (it.type === 'yt') {
     audio.pause(); audio.removeAttribute('src'); audio.load();
-    media.className = 'media' + ($('#toggleVideo').dataset.hide === '1' ? ' collapsed' : '');
-    $('#yt').style.visibility = 'visible'; $('#note').hidden = true; $('#toggleVideo').hidden = false;
+    media.className = 'media yt';
+    $('#yt').style.visibility = 'visible'; $('#note').hidden = false;
+    $('#note').textContent = 'Video YouTube · tidak bisa diputar offline';
     loadYT(it, autoplay);
   } else {
     if (ytReady) { try { yt.stopVideo(); } catch {} }
     media.className = 'media audio'; $('#yt').style.visibility = 'hidden'; $('#note').hidden = false;
-    $('#note').textContent = '♪ Audio Google Drive'; $('#toggleVideo').hidden = true;
-    audio.src = '/drive?id=' + encodeURIComponent(it.id);
-    audio.preservesPitch = true; audio.playbackRate = rate; audio.defaultPlaybackRate = rate;
-    audio.volume = +$('#vol').value / 100;
-    if (autoplay) audio.play().catch(() => {});
+    const setSrc = (src, offline) => {
+      if (tok !== loadTok) return;
+      $('#note').textContent = offline ? '♪ Audio Google Drive · tersimpan offline' : '♪ Audio Google Drive';
+      audio.src = src;
+      audio.preservesPitch = true; audio.playbackRate = rate; audio.defaultPlaybackRate = rate;
+      audio.volume = +$('#vol').value / 100;
+      if (autoplay) audio.play().catch(() => {});
+    };
+    const net = driveKey(it.id), ready = blobURLs.get(it.id);
+    if (ready) setSrc(ready, true);
+    else if (cached.has(it.id)) cachedURL(it.id).then(u => { if (u) blobURLs.set(it.id, u); setSrc(u || net, !!u); });
+    else setSrc(net, false);
   }
+  prepareAround();
   renderQueue(); render(); updateMediaSession();
   document.querySelector('#queue li.cur')?.scrollIntoView({ block: 'nearest' });
 }
@@ -456,12 +488,13 @@ $('#prev').onclick = prevTrack;
 document.querySelectorAll('[data-skip]').forEach(b => b.onclick = () => P.seek(P.time() + +b.dataset.skip));
 
 function paintModes() {
-  document.querySelectorAll('[data-repeat]').forEach(b => { const on = b.dataset.repeat === repeat; b.classList.toggle('sel', on); b.setAttribute('aria-pressed', on); });
+  const r = $('#repeat'); r.textContent = { off: '🔁 Tanpa ulang', one: '🔂 Ulang 1 lagu', all: '🔁 Ulang semua' }[repeat]; r.classList.toggle('on', repeat !== 'off');
   const s = $('#shuffle'); s.textContent = 'Acak: ' + (shuffle ? 'nyala' : 'mati'); s.classList.toggle('on', shuffle);
   const a = $('#autonext'); a.textContent = 'Auto next: ' + (autonext ? 'nyala' : 'mati'); a.classList.toggle('on', autonext);
   store.set('lp-repeat', repeat); store.set('lp-shuffle', shuffle); store.set('lp-autonext', autonext);
 }
-document.querySelectorAll('[data-repeat]').forEach(b => b.onclick = () => { repeat = b.dataset.repeat; paintModes(); });
+const cycleRepeat = () => { repeat = { off: 'one', one: 'all', all: 'off' }[repeat]; paintModes(); };
+$('#repeat').onclick = cycleRepeat;
 $('#shuffle').onclick = () => { shuffle = !shuffle; history = []; paintModes(); };
 $('#autonext').onclick = () => { autonext = !autonext; paintModes(); };
 
@@ -472,8 +505,7 @@ document.querySelectorAll('[data-rate]').forEach(b => b.onclick = () => applyRat
 $('#vol').value = store.get('lp-vol', 100);
 $('#vol').oninput = e => { P.setVol(+e.target.value); store.set('lp-vol', +e.target.value); };
 
-$('#toggleVideo').onclick = () => { const m = $('#media'), t = $('#toggleVideo'); const c = m.classList.toggle('collapsed');
-  t.dataset.hide = c ? '1' : ''; t.textContent = c ? 'Tampilkan video' : 'Sembunyikan video'; };
+
 
 // A-B loop
 function updateAB() {
@@ -515,7 +547,7 @@ document.addEventListener('keydown', e => {
   if (e.target.matches('textarea, input[type=text], input[type=url]') || e.metaKey || e.ctrlKey || e.altKey) return;
   const act = {
     ' ': () => isPlaying() ? P.pause() : P.play(), 'k': () => isPlaying() ? P.pause() : P.play(),
-    'n': () => nextTrack(false), 'r': () => { repeat = { off: 'one', one: 'all', all: 'off' }[repeat]; paintModes(); }, 'p': prevTrack, 's': stop,
+    'n': () => nextTrack(false), 'r': cycleRepeat, 'p': prevTrack, 's': stop,
     'arrowleft': () => P.seek(P.time() - 5), 'arrowright': () => P.seek(P.time() + 5),
     'j': () => P.seek(P.time() - 10), 'l': () => P.seek(P.time() + 10),
     '[': () => applyRate(rate - 0.05), ']': () => applyRate(rate + 0.05),
@@ -523,6 +555,80 @@ document.addEventListener('keydown', e => {
   }[e.key.toLowerCase()];
   if (act) { e.preventDefault(); act(); }
 });
+
+// ---------- offline copies of Drive audio ----------
+// Each Drive song is downloaded once into Cache Storage, then played from the phone: no data use on replay,
+// works offline, instant seeking. Songs are fetched one by one in playlist order, starting at the current one.
+const AUDIO_CACHE = 'encore-audio-v1';
+const hasCache = 'caches' in window;
+const driveKey = id => '/drive?id=' + encodeURIComponent(id);
+const cached = new Set(), failed = new Set(), progress = new Map(), blobURLs = new Map();
+let prefetching = false;
+
+function paintDl(el, id) {
+  if (!hasCache) return;
+  el.className = 'dl' + (cached.has(id) ? ' ok' : '');
+  el.textContent = cached.has(id) ? '✓' : progress.has(id) ? `${progress.get(id)}%` : '';
+  el.title = cached.has(id) ? 'Tersimpan di perangkat ini' : '';
+}
+const repaintDl = id => document.querySelectorAll(`[data-dl="${id}"]`).forEach(el => paintDl(el, id));
+
+async function loadCachedIds() {
+  if (!hasCache) return;
+  try { (await (await caches.open(AUDIO_CACHE)).keys()).forEach(r => { const id = new URL(r.url).searchParams.get('id'); if (id) cached.add(id); }); } catch {}
+}
+async function cachedURL(id) {
+  try { const r = await (await caches.open(AUDIO_CACHE)).match(driveKey(id)); if (r) return URL.createObjectURL(await r.blob()); } catch {}
+  return null;
+}
+async function cacheDrive(id) {
+  if (cached.has(id)) return true;
+  try {
+    const r = await fetch(driveKey(id));
+    const type = r.headers.get('content-type') || '';
+    if (!r.ok || !/^(audio|video)\/|octet-stream/.test(type)) return false;
+    const total = +r.headers.get('content-length') || 0, reader = r.body.getReader(), chunks = [];
+    let got = 0, shown = -1;
+    for (;;) {
+      const { done, value } = await reader.read(); if (done) break;
+      chunks.push(value); got += value.length;
+      const pct = total ? Math.floor(got / total * 100) : 0;
+      if (pct !== shown) { shown = pct; progress.set(id, pct); repaintDl(id); }
+    }
+    const blob = new Blob(chunks, { type });
+    await (await caches.open(AUDIO_CACHE)).put(driveKey(id), new Response(blob, { headers: { 'Content-Type': type, 'Content-Length': String(blob.size) } }));
+    cached.add(id); return true;
+  } catch { return false; }
+  finally { progress.delete(id); repaintDl(id); }
+}
+async function prefetchAll() {
+  if (!hasCache || prefetching || navigator.connection?.saveData) return;
+  prefetching = true;
+  try {
+    for (;;) {
+      const start = Math.max(idx, 0), order = [...list.slice(start), ...list.slice(0, start)];
+      const it = order.find(x => x.type === 'drive' && !cached.has(x.id) && !failed.has(x.id));
+      if (!it) break;
+      if (await cacheDrive(it.id)) prepareAround(); else failed.add(it.id);
+    }
+  } finally { prefetching = false; }
+}
+async function pruneCache() {
+  if (!hasCache) return;
+  const keep = new Set(list.filter(x => x.type === 'drive').map(x => x.id));
+  try {
+    const c = await caches.open(AUDIO_CACHE);
+    for (const r of await c.keys()) { const id = new URL(r.url).searchParams.get('id'); if (!keep.has(id)) { await c.delete(r); cached.delete(id); } }
+  } catch {}
+}
+// Keep ready-to-play copies of the current, next and previous songs so playback starts instantly,
+// even from the lock screen.
+async function prepareAround() {
+  if (!hasCache || idx < 0 || !list.length) return;
+  const n = list.length, want = new Set([idx, (idx + 1) % n, (idx - 1 + n) % n].map(i => list[i]).filter(x => x?.type === 'drive').map(x => x.id));
+  for (const [id, u] of blobURLs) if (!want.has(id) && audio.src !== u) { URL.revokeObjectURL(u); blobURLs.delete(id); }
+  for (const id of want) if (cached.has(id) && !blobURLs.has(id)) { const u = await cachedURL(id); if (u) blobURLs.set(id, u); }
+}
 
 // lock-screen & notification controls (phones, headphones)
 function updateMediaSession() {
@@ -543,7 +649,13 @@ if ('mediaSession' in navigator) {
 // boot
 paintModes(); applyRate(rate); setName(store.get('lp-name', null)); renderQueue();
 list.forEach(fetchTitle);
-if (list.length) playIndex(Math.min(Math.max(idx, 0), list.length - 1), false); else showEmptyPlayer();
+(async () => {
+  await loadCachedIds();
+  if (list.length) { idx = Math.min(Math.max(idx, 0), list.length - 1); await prepareAround(); playIndex(idx, false); } else showEmptyPlayer();
+  renderQueue(); pruneCache(); prefetchAll();
+  try { navigator.storage?.persist?.(); } catch {}
+})();
+if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('/sw.js').catch(() => {});
 </script>
 </body>
 </html>

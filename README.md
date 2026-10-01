@@ -8,6 +8,7 @@ Sekali lagi, sampai hafal. Media player untuk latihan lagu dari link YouTube dan
 - Ulang: tanpa ulang, ulang 1 lagu, ulang semua · acak
 - Kecepatan 0.25×–2×, loop A–B
 - Bisa dipasang di layar HP (Add to Home Screen), kontrol di layar kunci untuk audio Drive
+- Audio Drive otomatis disimpan di perangkat (✓ di playlist): hemat kuota saat diputar ulang dan bisa offline
 
 File Google Drive harus dibagikan sebagai **"Siapa saja yang memiliki link"**.
 
