@@ -339,6 +339,7 @@ function removeAt(i) {
   list.splice(i, 1);
   if (i < idx) idx--;
   if (playing) { if (list.length) playIndex(Math.min(idx, list.length - 1), isPlaying()); else { stop(); idx = -1; cur = null; showEmptyPlayer(); } }
+  if (!list.length) setName(null);
   save(); renderQueue(); pruneCache();
 }
 function move(i, d) {
@@ -351,6 +352,7 @@ function move(i, d) {
 function renderQueue() {
   const ol = $('#queue'); ol.innerHTML = '';
   $('#qEmpty').hidden = list.length > 0;
+  $('#plName').hidden = !list.length || !$('#plName').textContent;
   $('#offlineHint').hidden = !hasCache || !list.some(x => x.type === 'drive');
   $('#count').textContent = list.length ? `${list.length} lagu` : '';
   list.forEach((it, i) => {
