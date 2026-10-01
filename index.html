@@ -67,10 +67,6 @@ button.on { background: var(--loop); border-color: var(--loop); color: #1b1f27; 
 .pos { font: .8rem var(--f-mono); color: var(--muted); flex: none; }
 .media { position: relative; width: 100%; max-width: 100%; aspect-ratio: 16/9; border-radius: 8px; overflow: hidden; background: #000; }
 .media.audio { aspect-ratio: auto; height: 84px; background: var(--bg); }
-/* YouTube requires an embedded player of at least 200x200; quality is chosen by YouTube, not settable */
-.media.yt { aspect-ratio: auto; height: 200px; background: var(--bg); }
-.media.yt #yt { right: auto; width: 200px; }
-.media.yt .note { left: 200px; padding: 0 12px; text-align: center; font-size: .78rem; }
 .media .note { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font: .85rem var(--f-mono); }
 #yt, #yt iframe { position: absolute; inset: 0; width: 100%; height: 100%; }
 
@@ -410,9 +406,8 @@ function playIndex(i, autoplay = true) {
   const media = $('#media'), tok = ++loadTok;
   if (it.type === 'yt') {
     audio.pause(); audio.removeAttribute('src'); audio.load();
-    media.className = 'media yt';
-    $('#yt').style.visibility = 'visible'; $('#note').hidden = false;
-    $('#note').textContent = 'Video YouTube · tidak bisa diputar offline';
+    media.className = 'media';
+    $('#yt').style.visibility = 'visible'; $('#note').hidden = true;
     loadYT(it, autoplay);
   } else {
     if (ytReady) { try { yt.stopVideo(); } catch {} }
