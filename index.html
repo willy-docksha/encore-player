@@ -438,7 +438,7 @@ function loadYT(it, autoplay) {
     return;
   }
   if (!yt) {
-    yt = new YT.Player('yt', { videoId: it.id, playerVars: { start: it.start || 0, rel: 0, playsinline: 1, autoplay: autoplay ? 1 : 0 },
+    yt = new YT.Player('yt', { videoId: it.id, playerVars: { start: it.start || 0, rel: 0, playsinline: 1, autoplay: autoplay ? 1 : 0, disablekb: 1 },
       events: {
         onReady: () => { ytReady = true; P.setRate(rate); P.setVol(+$('#vol').value); if (autoplay) yt.playVideo(); },
         onStateChange: e => { if (e.data === 0) onEnded(); if (e.data === 1) { P.setRate(rate); ytTitle(); } renderQueue(); },
@@ -549,6 +549,11 @@ setInterval(() => {
 audio.onloadedmetadata = () => { updateAB(); render(); };
 
 // keyboard
+// Clicking the YouTube video moves keyboard focus into its iframe, where YouTube's own shortcuts
+// (10s arrow jumps) would take over. Hand focus straight back so Encore's shortcuts keep working.
+window.addEventListener('blur', () => setTimeout(() => {
+  if (document.activeElement?.tagName === 'IFRAME') { document.activeElement.blur(); window.focus(); }
+}, 0));
 document.addEventListener('keydown', e => {
   if (e.target.matches('textarea, input[type=text], input[type=url]') || e.metaKey || e.ctrlKey || e.altKey) return;
   const act = {
