@@ -121,7 +121,9 @@ ol.queue { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-d
 .queue .acts button { border: none; background: transparent; color: var(--muted); padding: 4px 6px; font-size: .85rem; }
 .queue .acts button:hover:not(:disabled) { color: var(--ink); }
 .empty { color: var(--muted); font-size: .9rem; margin: 12px 0 0; }
-.keys { font-size: .82rem; color: var(--muted); line-height: 1.9; margin: 0; }
+.keys { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; align-items: center; font-size: .82rem; color: var(--muted); margin: 14px 0 0; }
+.keys dt { white-space: nowrap; }
+.keys dd { margin: 0; }
 kbd { font: .75rem var(--f-mono); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 1px 5px; background: var(--panel); }
 [hidden] { display: none !important; }
 </style>
@@ -188,8 +190,16 @@ kbd { font: .75rem var(--f-mono); border: 1px solid var(--line); border-bottom-w
         <div class="panel">
           <h2>Volume</h2>
           <input id="vol" type="range" min="0" max="100" value="100" aria-label="Volume">
-          <p class="keys" style="margin-top:8px"><kbd>Space</kbd> play · <kbd>N</kbd>/<kbd>P</kbd> next/prev · <kbd>S</kbd> stop · <kbd>R</kbd> ulang<br>
-            <kbd>←</kbd><kbd>→</kbd> 5s · <kbd>J</kbd><kbd>L</kbd> 10s · <kbd>[</kbd><kbd>]</kbd> speed · <kbd>A</kbd><kbd>B</kbd><kbd>C</kbd> loop</p>
+          <dl class="keys">
+            <dt><kbd>Space</kbd></dt><dd>play / pause</dd>
+            <dt><kbd>N</kbd> <kbd>P</kbd></dt><dd>next / prev</dd>
+            <dt><kbd>S</kbd></dt><dd>stop</dd>
+            <dt><kbd>R</kbd></dt><dd>ganti mode ulang</dd>
+            <dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>mundur / maju 5 detik</dd>
+            <dt><kbd>J</kbd> <kbd>L</kbd></dt><dd>mundur / maju 10 detik</dd>
+            <dt><kbd>[</kbd> <kbd>]</kbd></dt><dd>pelan / cepat</dd>
+            <dt><kbd>A</kbd> <kbd>B</kbd> <kbd>C</kbd></dt><dd>set A / set B / hapus loop</dd>
+          </dl>
         </div>
       </section>
     </div>
