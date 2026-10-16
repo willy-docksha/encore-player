@@ -6,7 +6,8 @@ async function lookup(type, id) {
     const r = await fetch('https://www.youtube.com/oembed?format=json&url=' + encodeURIComponent('https://www.youtube.com/watch?v=' + id));
     return r.ok ? (await r.json()).title : null;
   }
-  const r = await fetch(`https://drive.google.com/file/d/${id}/view`, { headers: UA });
+  const [file, rk] = id.split('.');
+  const r = await fetch(`https://drive.google.com/file/d/${file}/view${rk ? `?resourcekey=${rk}` : ''}`, { headers: UA });
   const m = (await r.text()).match(/<title>([\s\S]*?)<\/title>/);
   if (!m) return null;
   let t = m[1].replace(/&amp;/g, '&').replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
@@ -18,7 +19,7 @@ async function lookup(type, id) {
 export async function GET(request) {
   const q = new URL(request.url).searchParams;
   const type = q.get('type'), id = q.get('id') || '';
-  if (!['yt', 'drive'].includes(type) || !/^[\w-]{6,}$/.test(id)) return new Response('Bad request', { status: 400 });
+  if (!['yt', 'drive'].includes(type) || !/^[\w-]{6,}(\.[\w-]+)?$/.test(id)) return new Response('Bad request', { status: 400 });
   let title = null;
   try { title = await lookup(type, id); } catch {}
   return Response.json({ title }, { headers: { 'Cache-Control': 'public, s-maxage=86400' } });

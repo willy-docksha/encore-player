@@ -80,7 +80,10 @@ export function parseLink(raw) {
   }
   if (/(^|\.)(drive|docs)\.google\.com$/.test(h) || h === "drive.usercontent.google.com") {
     const m = u.pathname.match(/\/d\/([\w-]{10,})/);
-    const id = m ? m[1] : u.searchParams.get("id");
+    let id = m ? m[1] : u.searchParams.get("id");
+    // old files (shared before 2021) only open with their resource key: carry it inside the id
+    const rk = u.searchParams.get("resourcekey");
+    if (id && rk && /^[\w-]+$/.test(rk)) id = `${id}.${rk}`;
     return id ? { type: "drive", id, start: 0 } : null;
   }
   return null;

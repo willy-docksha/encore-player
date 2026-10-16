@@ -14,7 +14,14 @@ const STRING_COLORS = ["#ff8f6b", "#f5b83d", "#5cc97b", "#3fb9d6", "#a67cf5"];
 const MAX_FRET = 20;
 const ACTIVE = ["queued", "downloading", "waiting", "running"];
 const SRC = { file: "File", youtube: "YouTube", gdrive: "Google Drive" };
-const fmtEta = (s) => (s < 60 ? "<1 mnt" : `~${Math.round(s / 60)} mnt`);
+const fmtEta = (s) => {
+  if (s < 60) return "<1 mnt";
+  const m = Math.round(s / 60);
+  if (m < 60) return `~${m} mnt`;
+  // above an hour, show hours + minutes
+  const h = Math.floor(m / 60), r = m % 60;
+  return r ? `~${h} jam ${r} mnt` : `~${h} jam`;
+};
 
 // ------------------------------------------------------------------ theme colors for canvas drawing
 let theme = {};
@@ -152,6 +159,7 @@ function renderQueue() {
   const rows = jobs.filter((j) => ACTIVE.includes(j.status) || j.status === "error");
   const order = (j) => (j.status === "running" ? 0 : j.status === "error" ? 1e6 : j.position || 1e5);
   $("#queueSection").hidden = !rows.length;
+  $("#busyWarn").hidden = !rows.some((j) => ACTIVE.includes(j.status));
   $("#queueList").replaceChildren(...rows.sort((a, b) => order(a) - order(b)).map(queueRow));
 }
 
@@ -467,17 +475,19 @@ const player = (() => {
   function renderMixer() {
     const strips = tracks.map((t, i) => {
       const info = STEM_INFO[t.name];
-      const strip = el("div", "strip");
+      const strip = el("div", "strip" + (audible(t.name) ? "" : " silent"));
       const name = el("button", "chan" + (t.muted ? " muted" : ""));
       name.type = "button";
-      name.title = `Mute / unmute ${info.label} (${i + 1})`;
+      name.title = t.muted ? `${info.label} di-mute. Klik untuk menyalakan lagi (${i + 1})` : `Klik untuk mute ${info.label} (${i + 1})`;
+      name.setAttribute("aria-pressed", String(t.muted));
       const dot = el("span", "dot");
       dot.style.background = info.color;
       name.append(dot, info.label);
       name.onclick = () => { t.muted = !t.muted; applyMix(); renderMixer(); };
-      const solo = el("button", "solo" + (t.solo ? " on" : ""), "S");
+      const solo = el("button", "solo" + (t.solo ? " on" : ""), "Solo");
       solo.type = "button";
-      solo.title = `Solo ${info.label}`;
+      solo.title = t.solo ? `Matikan solo ${info.label}` : `Solo: dengar ${info.label} saja`;
+      solo.setAttribute("aria-pressed", String(t.solo));
       solo.onclick = () => { t.solo = !t.solo; applyMix(); renderMixer(); };
       const vol = el("input");
       vol.type = "range"; vol.min = 0; vol.max = 1; vol.step = 0.01; vol.value = t.vol;
@@ -491,6 +501,69 @@ const player = (() => {
       return strip;
     });
     $("#mixer").replaceChildren(...strips);
+  }
+
+  // ---------------- export: render the chosen stems to one mp3
+  let exporting = false;
+  function exportOptions() {
+    if (!tracks.length) return [];
+    const heard = tracks.filter((t) => audible(t.name));
+    const label = (list) => list.map((t) => STEM_INFO[t.name].label).join(", ");
+    const opts = [];
+    if (heard.length && heard.length < tracks.length) {
+      const off = tracks.filter((t) => !audible(t.name));
+      opts.push({ label: `Sesuai mixer (tanpa ${label(off)})`, list: heard, suffix: `tanpa ${label(off).toLowerCase()}` });
+    }
+    for (const t of tracks) {
+      const rest = tracks.filter((x) => x !== t);
+      opts.push({ label: `Tanpa ${STEM_INFO[t.name].label}`, list: rest, suffix: `tanpa ${STEM_INFO[t.name].label.toLowerCase()}` });
+    }
+    for (const t of tracks) opts.push({ label: `${STEM_INFO[t.name].label} saja`, list: [t], suffix: STEM_INFO[t.name].label.toLowerCase() });
+    return opts;
+  }
+
+  async function exportMix(list, suffix) {
+    if (exporting) return toast("Export sebelumnya masih jalan");
+    exporting = true;
+    const done = toast("Menyiapkan file audio…", { ms: 600000 });
+    try {
+      const SR = 44100;
+      const decoder = new OfflineAudioContext(2, SR, SR);
+      const bufs = await Promise.all(list.map(async (t) => {
+        const bytes = await (await fetch(song.audioUrls[t.name])).arrayBuffer();
+        return { buf: await decoder.decodeAudioData(bytes), vol: t.vol };
+      }));
+      const len = Math.max(...bufs.map((b) => b.buf.length));
+      const ctx = new OfflineAudioContext(2, len, SR);
+      for (const { buf, vol } of bufs) {
+        const src = ctx.createBufferSource(), g = ctx.createGain();
+        src.buffer = buf; g.gain.value = vol;
+        src.connect(g).connect(ctx.destination);
+        src.start();
+      }
+      const out = await ctx.startRendering();
+      const bytes = await new Promise((resolve, reject) => {
+        const w = new Worker(new URL("./export-worker.js", import.meta.url), { type: "module" });
+        w.onmessage = ({ data }) => { w.terminate(); data.error ? reject(new Error(data.error)) : resolve(data.bytes); };
+        w.onerror = (e) => { w.terminate(); reject(new Error(e.message || "encoder gagal dimuat")); };
+        const left = out.getChannelData(0).slice(), right = out.getChannelData(1).slice();
+        w.postMessage({ left, right, sampleRate: SR }, [left.buffer, right.buffer]);
+      });
+      const a = el("a");
+      a.href = URL.createObjectURL(new Blob([bytes], { type: "audio/mpeg" }));
+      a.download = `${(song.title || "lagu").replace(/[^\w\-. ]+/g, "_").trim().slice(0, 80) || "lagu"} - ${suffix}.mp3`;
+      document.body.append(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+      done();
+      toast("File audio siap");
+    } catch (ex) {
+      done();
+      toast(`Gagal export: ${ex.message}`, { error: true });
+    } finally {
+      exporting = false;
+    }
   }
 
   function toggleMuteAt(i) {
@@ -1389,7 +1462,7 @@ const player = (() => {
     else if (/^[1-7]$/.test(k)) toggleMuteAt(+k - 1);
   });
 
-  return { load, stop, redrawBase: drawOverviewBase };
+  return { load, stop, redrawBase: drawOverviewBase, exportOptions, exportMix };
 })();
 
 // ------------------------------------------------------------------ routes
@@ -1458,7 +1531,13 @@ export async function enterSong(id) {
     const more = el("button", "icon-btn");
     more.type = "button"; more.title = "Lainnya"; more.append(icon("more"));
     more.onclick = (e) => { e.stopPropagation(); showMenu(more, songMenu(job).filter((x) => x && !/MIDI|Playlist|Buka di/.test(x.label))); };
-    acts.push(midi);
+    const exp = el("button", "btn sm");
+    exp.type = "button"; exp.title = "Gabungkan instrumen jadi satu file MP3"; exp.append(icon("download"), "Export audio");
+    exp.onclick = (e) => {
+      e.stopPropagation();
+      showMenu(exp, player.exportOptions().map((o) => ({ label: o.label, icon: "download", onClick: () => player.exportMix(o.list, o.suffix) })));
+    };
+    acts.push(exp, midi);
     if (server.analysis) acts.push(more);  // view-only server: nothing left in this menu
     $("#songActions").replaceChildren(...acts);
     // stems are blobs in this browser: resolve their object urls before the player needs them

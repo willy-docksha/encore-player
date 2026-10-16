@@ -369,6 +369,7 @@ kbd { font: .74rem var(--f-mono); border: 1px solid var(--line); border-bottom-w
 .job-main { flex: 1; min-width: 0; }
 .job-title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .job-sub { font-size: .8rem; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 2px; }
+.busy-warn { margin: 0 0 10px; padding: 10px 12px; border-radius: 10px; font-size: .84rem; line-height: 1.4; color: var(--loop); background: var(--loop-soft); border: 1px solid color-mix(in srgb, var(--loop) 45%, transparent); }
 .job-sub .err { color: var(--danger); }
 .job-acts { display: flex; gap: 6px; align-items: center; }
 
@@ -429,8 +430,9 @@ kbd { font: .74rem var(--f-mono); border: 1px solid var(--line); border-bottom-w
 .chan { border: 0; background: var(--surface); border-radius: 7px; padding: 4px 9px; font-size: .78rem; font-weight: 600; cursor: pointer; color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.1); }
 .chan .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
 .chan.muted { color: var(--muted); text-decoration: line-through; background: transparent; box-shadow: none; }
-.solo { border: 0; background: transparent; color: var(--muted); font: 700 .7rem var(--f-mono); width: 22px; height: 22px; border-radius: 6px; cursor: pointer; }
-.solo.on { background: var(--loop); color: #1b1f27; }
+.solo { border: 1px solid var(--line); background: transparent; color: var(--muted); font: 600 .68rem var(--f-mono); padding: 0 6px; height: 22px; border-radius: 6px; cursor: pointer; }
+.strip.silent .chan:not(.muted), .strip.silent input[type=range] { opacity: .45; }
+.solo.on { background: var(--loop); border-color: var(--loop); color: #1b1f27; }
 .switches { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 .part-switch { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
 .part-switch::-webkit-scrollbar { display: none; }

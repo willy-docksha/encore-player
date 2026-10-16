@@ -3,17 +3,21 @@ const PASS = ['content-type', 'content-length', 'content-range', 'accept-ranges'
 const UA = { 'User-Agent': 'Mozilla/5.0' };
 
 export async function GET(request) {
-  const id = new URL(request.url).searchParams.get('id') || '';
-  if (!/^[\w-]{10,}$/.test(id)) return new Response('Bad id', { status: 400 });
+  const raw = new URL(request.url).searchParams.get('id') || '';
+  if (!/^[\w-]{10,}(\.[\w-]+)?$/.test(raw)) return new Response('Bad id', { status: 400 });
+  // "<file id>.<resource key>" for old files shared before 2021
+  const [id, rk] = raw.split('.');
+  const key = rk ? `&resourcekey=${rk}` : '';
 
   const range = request.headers.get('range');
   const headers = { ...UA, ...(range ? { Range: range } : {}) };
-  let res = await fetch(`https://drive.usercontent.google.com/download?id=${id}&export=download`, { headers });
+  let res = await fetch(`https://drive.usercontent.google.com/download?id=${id}&export=download${key}`, { headers });
 
   // Large files return a virus-scan confirmation page; follow its form.
   if ((res.headers.get('content-type') || '').startsWith('text/html')) {
     const page = await res.text();
     const fields = Object.fromEntries([...page.matchAll(/name="([^"]+)" value="([^"]*)"/g)].map(m => [m[1], m[2]]));
+    if (rk && !fields.resourcekey) fields.resourcekey = rk;
     if (!fields.confirm) return new Response('File tidak publik atau tidak bisa diunduh', { status: 403 });
     res = await fetch('https://drive.usercontent.google.com/download?' + new URLSearchParams(fields), { headers });
   }

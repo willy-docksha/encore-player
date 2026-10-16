@@ -386,7 +386,7 @@ function markBad(text) {
   showMsg(text + (autonext && list.length > 1 ? " Lanjut ke lagu berikutnya…" : ""));
   if (autonext && list.length > 1) setTimeout(() => nextTrack(true), 2500);
 }
-audio.onerror = () => { if (audio.getAttribute("src")) markBad('Audio Drive tidak bisa diputar. Pastikan file dibagikan "Siapa saja yang memiliki link" dan berupa audio.'); };
+audio.onerror = () => { if (audio.getAttribute("src")) markBad('Audio Drive tidak bisa diputar. Pastikan file dibagikan "Siapa saja yang memiliki link" dan berupa audio, lalu salin ulang link-nya dari tombol Bagikan.'); };
 audio.onplaying = () => { if (cur) cur.bad = false; media.claim("playlist"); renderQueue(); };
 audio.onpause = renderQueue;
 audio.onended = onEnded;

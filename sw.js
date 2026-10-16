@@ -1,6 +1,6 @@
 // keeps the app itself available offline (network first, cached copy as fallback).
 // drive audio is cached separately by the page in 'encore-audio-v1', ai models in 'encore-models-v1'.
-const SHELL = 'encore-shell-v9';
+const SHELL = 'encore-shell-v10';
 const FILES = ['/', '/app/styles.css', '/app/core.js', '/app/playlist.js', '/app/bass.js', '/app/library.js', '/app/main.js',
   '/manifest.webmanifest', '/icon-180.png', '/icon-192.png', '/icon-512.png'];
 

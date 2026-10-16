@@ -149,7 +149,7 @@ function stopWorker() {
 
 async function fetchDrive(id, onProgress) {
   const r = await fetch(`/drive?id=${encodeURIComponent(id)}`);
-  if (!r.ok) throw new Error(r.status === 403 ? "File Google Drive tidak publik. Bagikan sebagai “Siapa saja yang memiliki link”." : `Gagal mengunduh dari Google Drive (${r.status})`);
+  if (!r.ok) throw new Error(r.status === 403 ? "File Google Drive tidak publik. Bagikan sebagai “Siapa saja yang memiliki link”, lalu salin ulang link-nya dari tombol Bagikan." : `Gagal mengunduh dari Google Drive (${r.status})`);
   const total = Number(r.headers.get("content-length")) || 0;
   const reader = r.body.getReader();
   const parts = [];
@@ -373,6 +373,13 @@ export async function api(path, { method = "GET", body } = {}) {
   }
   fail("tidak dikenal");
 }
+
+// warn before leaving: a reload restarts the running analysis from 0
+addEventListener("beforeunload", (e) => {
+  if (![...metas.values()].some((m) => ACTIVE.includes(m.status))) return;
+  e.preventDefault();
+  e.returnValue = "";
+});
 
 // resume whatever was waiting when the page was closed
 if (supported) load().then(pump);
