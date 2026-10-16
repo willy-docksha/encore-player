@@ -5,4 +5,5 @@ __pycache__/
 .venv/
 data/
 *.log
-publish.env
+# ai models are exported by tools/export_models.py and hosted separately (see README)
+models/

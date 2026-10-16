@@ -1,6 +1,0 @@
-# view-only server (ENCORE_ANALYSIS=off): no demucs / torch, just serving published songs
-soundfile
-librosa
-fastapi
-uvicorn[standard]
-python-multipart

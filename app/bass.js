@@ -1,6 +1,7 @@
-// bass section (delve): separate the bass, transcribe notes, detect chords. needs the local mac server.
+// bass section (delve): separate the stems, transcribe notes, detect chords. runs in this browser (library.js).
 
-import { $, $$, el, icon, setIcon, store, fmtTime, fmtDate, fmtAgo, api, parseLink, toast, confirmDialog, showMenu, server, media, router, onKeys } from "./core.js";
+import { $, $$, el, icon, setIcon, store, fmtTime, fmtDate, fmtAgo, parseLink, toast, confirmDialog, showMenu, server, media, router, onKeys } from "./core.js";
+import { api, fileUrl } from "./library.js";
 import { addToPlaylist } from "./playlist.js";
 
 const SHARP = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
@@ -40,7 +41,7 @@ urlInput.addEventListener("input", () => {
   const blocked = p?.type === "yt" && !server.youtube;
   d.hidden = false;
   d.classList.toggle("bad", !p || blocked);
-  d.textContent = !p ? "Link tidak dikenali" : blocked ? "YouTube tidak tersedia di server" : p.type === "yt" ? "YouTube" : "Google Drive";
+  d.textContent = !p ? "Link tidak dikenali" : blocked ? "YouTube: upload file audionya" : p.type === "yt" ? "YouTube" : "Google Drive";
 });
 
 $("#jobForm").addEventListener("submit", async (e) => {
@@ -77,13 +78,13 @@ window.addEventListener("drop", (e) => {
   if (f) uploadFile(f);
 });
 
-// create a job for a link; the server returns the existing one for a known video
+// create a job for a link; the library returns the existing one for a known file
 export async function submitLink(url, title) {
-  if (!server.bass) { toast("Breakdown hanya tersedia saat Encore jalan di Mac atau server", { error: true }); return false; }
+  if (!server.bass) { toast("Browser ini tidak mendukung Breakdown. Pakai Chrome, Edge, atau Safari terbaru.", { error: true }); return false; }
   const p = parseLink(url);
   if (!p) return false;
   if (p.type === "yt" && !server.youtube) {
-    toast("Di server ini link YouTube tidak bisa diproses. Upload file audio atau pakai link Google Drive.", { error: true, ms: 7000 });
+    toast("Link YouTube tidak bisa dianalisis langsung di browser. Upload file audionya atau pakai link Google Drive.", { error: true, ms: 7000 });
     return false;
   }
   const fd = new FormData();
@@ -106,27 +107,21 @@ export async function submitLink(url, title) {
   }
 }
 
-function uploadFile(file) {
+async function uploadFile(file) {
+  if (!/^(audio|video)\//.test(file.type) && !/\.(mp3|wav|flac|m4a|ogg|oga|aac|opus|webm|mp4)$/i.test(file.name)) {
+    toast("Itu bukan file audio", { error: true });
+    return;
+  }
   const fd = new FormData();
   fd.append("kind", "file");
   fd.append("file", file);
-  const btn = $("#submitBtn");
-  const label = btn.querySelector("span");
-  btn.disabled = true;
-  const xhr = new XMLHttpRequest();
-  xhr.open("POST", "/api/jobs");
-  xhr.upload.onprogress = (e) => { if (e.lengthComputable) label.textContent = `${Math.round((e.loaded / e.total) * 100)}%`; };
-  xhr.onloadend = () => {
-    btn.disabled = false;
-    label.textContent = "Analisis";
-    if (xhr.status >= 200 && xhr.status < 300) { toast(`Masuk antrian: ${file.name}`); poll(); }
-    else {
-      let msg = "Upload gagal";
-      try { msg = JSON.parse(xhr.responseText).detail || msg; } catch {}
-      toast(msg, { error: true });
-    }
-  };
-  xhr.send(fd);
+  try {
+    await api("/api/jobs", { method: "POST", body: fd });
+    toast(`Masuk antrian: ${file.name}`);
+    poll();
+  } catch (ex) {
+    toast(ex.message, { error: true });
+  }
 }
 
 // ------------------------------------------------------------------ queue + library
@@ -450,7 +445,7 @@ const player = (() => {
     box.replaceChildren();
     const prefs = store.get("bass-mixer", {});
     tracks = ORDER.filter((n) => audioMap[n]).map((name) => {
-      const a = new Audio(`/api/jobs/${id}/files/${audioMap[name]}`);
+      const a = new Audio(song.audioUrls[name]);
       a.preload = "auto";
       a.preservesPitch = true;
       a.playbackRate = speed;
@@ -1404,12 +1399,10 @@ export function enterBassHome() {
   player.stop();
   openId = null;
   document.title = "Breakdown · Encore";
-  // a shared server only takes uploads and google drive links
-  $("#urlInput").placeholder = server.youtube ? "Tempel link YouTube atau Google Drive…" : "Tempel link Google Drive…";
-  $("#dropHint").textContent = server.youtube
-    ? "atau tarik file audio ke mana saja di halaman ini"
-    : "atau tarik file audio ke mana saja di halaman ini · link YouTube hanya bisa di Encore versi Mac";
-  // view-only server: no adding songs, they are published from the mac
+  // the browser only takes uploads and google drive links
+  $("#urlInput").placeholder = "Tempel link Google Drive…";
+  $("#dropHint").textContent = "atau tarik file audio ke sini · dianalisis di perangkat ini, biarkan tab tetap terbuka"
+    + " · pertama kali mengunduh model AI ±240 MB (sekali saja)";
   $("#jobForm").hidden = !server.analysis;
   $("#dropHint").hidden = !server.analysis;
   $("#bassOffline").hidden = server.bass || !server.checked;
@@ -1459,7 +1452,7 @@ export async function enterSong(id) {
     midi.onclick = (e) => {
       e.stopPropagation();
       showMenu(midi, parts.filter(([, , ok]) => ok).map(([name, label]) => ({
-        label: `MIDI ${label}`, icon: "download", onClick: () => { location.href = `/api/jobs/${id}/files/${name}.mid`; },
+        label: `MIDI ${label}`, icon: "download", onClick: () => downloadMidi(id, name, data.title, label),
       })));
     };
     const more = el("button", "icon-btn");
@@ -1468,6 +1461,10 @@ export async function enterSong(id) {
     acts.push(midi);
     if (server.analysis) acts.push(more);  // view-only server: nothing left in this menu
     $("#songActions").replaceChildren(...acts);
+    // stems are blobs in this browser: resolve their object urls before the player needs them
+    const audioMap = data.audio || { bass: "bass.mp3", rest: "rest.mp3" };
+    data.audioUrls = Object.fromEntries(await Promise.all(Object.entries(audioMap).map(async ([n, f]) => [n, await fileUrl(id, f)])));
+    if (openId !== id) return;
     player.load(id, data);
   } catch (ex) {
     toast(`Gagal membuka lagu: ${ex.message}`, { error: true });
@@ -1476,6 +1473,19 @@ export async function enterSong(id) {
 }
 
 export function leaveSong() { player.stop(); openId = null; }
+
+async function downloadMidi(id, name, title, label) {
+  try {
+    const a = el("a");
+    a.href = await fileUrl(id, `${name}.mid`);
+    a.download = `${(title || label).replace(/[^\w\-. ]+/g, "_").trim().slice(0, 80) || "lagu"} - ${label.toLowerCase()}.mid`;
+    document.body.append(a);
+    a.click();
+    a.remove();
+  } catch (ex) {
+    toast(`MIDI tidak tersedia: ${ex.message}`, { error: true });
+  }
+}
 
 export function initBass() {
   $("#recheckServer").onclick = async () => { await server.check(); enterBassHome(); };

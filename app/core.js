@@ -161,43 +161,30 @@ document.addEventListener("click", closeMenu);
 window.addEventListener("resize", closeMenu);
 document.addEventListener("scroll", closeMenu, true);
 
-// ------------------------------------------------------------------ server (bass section needs the local mac server)
+// ------------------------------------------------------------------ breakdown availability
+// breakdown runs in this browser (see library.js); the old server flags stay for the ui code
 
 export const server = {
   bass: false,
-  youtube: false, // false on a shared server: only uploads and drive links
-  analysis: false, // false on a view-only server: songs are published from the mac
+  youtube: false, // youtube audio cannot be fetched from a browser
+  analysis: false,
   mode: "offline",
   checked: false,
   listeners: new Set(),
   async check() {
-    try {
-      const ctl = new AbortController();
-      const timer = setTimeout(() => ctl.abort(), 2500);
-      const r = await fetch("/api/health", { signal: ctl.signal, cache: "no-store" });
-      clearTimeout(timer);
-      const j = r.ok ? await r.json() : {};
-      this.bass = !!j.bass;
-      this.youtube = this.bass && j.youtube !== false;
-      this.analysis = this.bass && j.analysis !== false;
-      if (this.bass && !this.analysis) j.mode = "viewer";
-      this.mode = this.bass ? j.mode || "local" : "offline";
-    } catch {
-      this.bass = false;
-      this.youtube = false;
-      this.analysis = false;
-      this.mode = "offline";
-    }
+    const ok = typeof Worker !== "undefined" && typeof indexedDB !== "undefined" && typeof WebAssembly !== "undefined"
+      && typeof OfflineAudioContext !== "undefined";
+    this.bass = ok;
+    this.analysis = ok;
+    this.youtube = false;
+    this.mode = ok ? "browser" : "offline";
     this.checked = true;
     const s = $("#serverStatus");
-    s.classList.toggle("on", this.bass);
-    s.classList.toggle("off", !this.bass);
-    s.querySelector(".server-text").textContent = {
-      local: "Mac terhubung · Breakdown aktif",
-      server: "Server terhubung · Breakdown tanpa YouTube",
-      viewer: "Server terhubung · Library Breakdown",
-      offline: "Mode online · tanpa Breakdown",
-    }[this.mode] || "Breakdown aktif";
+    s.classList.toggle("on", ok);
+    s.classList.toggle("off", !ok);
+    s.querySelector(".server-text").textContent = ok
+      ? ("gpu" in navigator ? "Breakdown jalan di browser ini (GPU)" : "Breakdown jalan di browser ini")
+      : "Browser ini tidak mendukung Breakdown";
     this.listeners.forEach((fn) => fn(this.bass));
     return this.bass;
   },

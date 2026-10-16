@@ -1,5 +1,5 @@
 #!/bin/bash
-# klik dua kali untuk menjalankan Encore (Playlist + Bedah Bass) di http://localhost:8765
+# klik dua kali untuk menjalankan Encore di http://localhost:8765 (butuh node)
 cd "$(dirname "$0")"
-( sleep 3; open "http://localhost:8765" ) &
-./run.sh
+( sleep 2; open "http://localhost:8765" ) &
+node dev.mjs

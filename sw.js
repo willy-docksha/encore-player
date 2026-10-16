@@ -1,7 +1,7 @@
 // keeps the app itself available offline (network first, cached copy as fallback).
-// drive audio is cached separately by the page in 'encore-audio-v1'.
-const SHELL = 'encore-shell-v8';
-const FILES = ['/', '/app/styles.css', '/app/core.js', '/app/playlist.js', '/app/bass.js', '/app/main.js',
+// drive audio is cached separately by the page in 'encore-audio-v1', ai models in 'encore-models-v1'.
+const SHELL = 'encore-shell-v9';
+const FILES = ['/', '/app/styles.css', '/app/core.js', '/app/playlist.js', '/app/bass.js', '/app/library.js', '/app/main.js',
   '/manifest.webmanifest', '/icon-180.png', '/icon-192.png', '/icon-512.png'];
 
 self.addEventListener('install', e => {
@@ -14,7 +14,7 @@ self.addEventListener('activate', e => {
 });
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
-  if (e.request.method !== 'GET' || url.origin !== location.origin || /^\/(drive|title|api)\b/.test(url.pathname)) return;
+  if (e.request.method !== 'GET' || url.origin !== location.origin || /^\/(drive|title|api|models)\b/.test(url.pathname)) return;
   const key = e.request.mode === 'navigate' ? '/' : e.request;
   e.respondWith(
     fetch(e.request).then(res => {

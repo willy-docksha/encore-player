@@ -1,12 +1,7 @@
-server.py
 start.command
-run.sh
-backend
+dev.mjs
+tools
+models
 data
 .venv
-requirements.txt
 *.log
-publish.sh
-publish.env*
-requirements-server.txt
-deploy
