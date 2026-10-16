@@ -40,4 +40,9 @@ http.createServer(async (req, res) => {
     if (!res.headersSent) res.writeHead(500);
     res.end(String(err));
   }
+}).on("error", (err) => {
+  // usually a second copy: the first one keeps serving the same files
+  if (err.code === "EADDRINUSE") console.log(`Encore sudah jalan di http://localhost:${PORT} (atau pakai port lain: node dev.mjs 8766)`);
+  else console.error(err);
+  process.exit(err.code === "EADDRINUSE" ? 0 : 1);
 }).listen(PORT, () => console.log(`Encore di http://localhost:${PORT}`));
