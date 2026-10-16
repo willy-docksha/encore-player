@@ -1,6 +1,6 @@
 // boot: routes, cross-section wiring, shortcuts, service worker
 
-import { $, router, server } from "./core.js";
+import { $, router, server, store } from "./core.js";
 import { initPlaylist, onSendToBass } from "./playlist.js";
 import { initBass, enterBassHome, enterSong, leaveSong, submitLink } from "./bass.js";
 
@@ -13,6 +13,20 @@ router.add(/^#\/(?:ngulik|bass\/song|song)\/(\w+)$/, "song", (id) => router.go(`
 
 onSendToBass((url, title) => submitLink(url, title));
 $("#shortcutsBtn").onclick = () => $("#shortcuts").showModal();
+
+// fold the sidebar down to icons (desktop), remembered per device
+function setFolded(on) {
+  document.querySelector(".shell").classList.toggle("nav-folded", on);
+  $("#navFold").title = on ? "Buka menu" : "Lipat menu";
+  $("#navFold").setAttribute("aria-expanded", String(!on));
+  $("#navFold span").textContent = on ? "Buka menu" : "Lipat menu";
+  store.set("nav-folded", on);
+  // canvases size themselves on resize: once now, once after the width animation
+  dispatchEvent(new Event("resize"));
+  setTimeout(() => dispatchEvent(new Event("resize")), 250);
+}
+setFolded(store.get("nav-folded", false));
+$("#navFold").onclick = () => setFolded(!document.querySelector(".shell").classList.contains("nav-folded"));
 
 initBass();
 initPlaylist();

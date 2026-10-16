@@ -107,6 +107,19 @@ code { font: .85em var(--f-mono); background: var(--surface-2); padding: 1px 5px
 .server.on .dot { background: var(--ok); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 25%, transparent); }
 .server.off .dot { background: var(--loop); }
 
+/* folded sidebar: icons only */
+@media (min-width: 901px) {
+  .shell { transition: grid-template-columns .2s ease; }
+  .shell.nav-folded { --nav-w: 72px; }
+  .nav-folded .nav { padding-left: 12px; padding-right: 12px; }
+  .nav-folded .brand { padding: 4px 0 18px; justify-content: center; }
+  .nav-folded .brand-text, .nav-folded .nav-item > span:not(.nav-badge):not(.nav-eq), .nav-folded .server-text { display: none; }
+  .nav-folded .nav-item { justify-content: center; padding: 10px; position: relative; }
+  .nav-folded .nav-badge { position: absolute; top: 2px; right: 2px; min-width: 18px; height: 18px; padding: 0 4px; }
+  .nav-folded .nav-eq { position: absolute; top: 4px; right: 6px; }
+  .nav-folded .server { justify-content: center; padding: 10px; }
+}
+
 .main { min-width: 0; padding: calc(28px + env(safe-area-inset-top, 0px)) clamp(16px, 3vw, 40px) 48px; }
 .view { max-width: 1240px; margin: 0 auto; animation: fade-in .25s ease; }
 @keyframes fade-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
@@ -456,7 +469,7 @@ kbd { font: .74rem var(--f-mono); border: 1px solid var(--line); border-bottom-w
   }
   .brand, .nav-foot .server { display: none; }
   .nav-foot { margin: 0; display: contents; }
-  #shortcutsBtn { display: none; }
+  #shortcutsBtn, #navFold { display: none; }
   .nav-item { flex: 1; flex-direction: column; gap: 2px; padding: 6px; font-size: .72rem; justify-content: center; position: relative; }
   .nav-item > span:not(.nav-badge):not(.nav-eq) { flex: none; }
   .nav-badge { position: absolute; top: 4px; left: calc(50% + 8px); }
