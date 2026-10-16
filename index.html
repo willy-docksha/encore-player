@@ -44,6 +44,9 @@
     <symbol id="i-keyboard" viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
     <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v12M7 11l5 5 5-5M4 20h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
     <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-mute" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9zM16 9.5l5 5M21 9.5l-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 5v14M6 13l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
     <symbol id="i-volume" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9zM16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
     <symbol id="i-grip" viewBox="0 0 24 24"><circle cx="9" cy="6" r="1.5" fill="currentColor"/><circle cx="15" cy="6" r="1.5" fill="currentColor"/><circle cx="9" cy="12" r="1.5" fill="currentColor"/><circle cx="15" cy="12" r="1.5" fill="currentColor"/><circle cx="9" cy="18" r="1.5" fill="currentColor"/><circle cx="15" cy="18" r="1.5" fill="currentColor"/></symbol>
     <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
@@ -160,7 +163,7 @@
             </div>
             <div class="card tool">
               <div class="tool-head"><h3>Volume</h3><span class="tool-val" id="volVal">100</span></div>
-              <div class="vol"><svg><use href="#i-volume"/></svg><input id="vol" type="range" min="0" max="100" value="100" aria-label="Volume"></div>
+              <div class="vol"><button class="icon-btn vol-btn" type="button" id="volBtn" title="Mute (M)" aria-pressed="false"><svg><use href="#i-volume"/></svg></button><input id="vol" type="range" min="0" max="100" value="100" aria-label="Volume"></div>
             </div>
           </section>
         </div>
@@ -383,6 +386,7 @@ https://youtu.be/…"></textarea>
           <dt><kbd>J</kbd> <kbd>L</kbd></dt><dd>mundur / maju 10 detik</dd>
           <dt><kbd>[</kbd> <kbd>]</kbd></dt><dd>pelan / cepat</dd>
           <dt><kbd>A</kbd> <kbd>B</kbd> <kbd>C</kbd></dt><dd>set A / set B / hapus loop</dd>
+          <dt><kbd>M</kbd></dt><dd>mute / unmute</dd>
         </dl>
       </div>
       <div>

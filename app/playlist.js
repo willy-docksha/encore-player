@@ -254,8 +254,8 @@ function renderQueue() {
       showMenu(more, [
         { label: it.type === "yt" ? "Buka di YouTube" : "Buka di Google Drive", icon: "link", href: it.url },
         { label: "Ganti link", icon: "refresh", onClick: () => relink(i) },
-        i > 0 && { label: "Pindah ke atas", onClick: () => moveItem(i, i - 1) },
-        i < list.length - 1 && { label: "Pindah ke bawah", onClick: () => moveItem(i, i + 1) },
+        i > 0 && { label: "Pindah ke atas", icon: "up", onClick: () => moveItem(i, i - 1) },
+        i < list.length - 1 && { label: "Pindah ke bawah", icon: "down", onClick: () => moveItem(i, i + 1) },
         canBreakdown(it) && { label: "Breakdown lagu ini", icon: "bass", onClick: () => sendToBass(it) },
         { label: "Hapus dari playlist", icon: "trash", danger: true, onClick: () => removeAt(i) },
       ]);
@@ -384,7 +384,7 @@ export function playIndex(i, autoplay = true) {
       audio.src = src;
       audio.preservesPitch = true;
       audio.playbackRate = rate; audio.defaultPlaybackRate = rate;
-      audio.volume = +$("#vol").value / 100;
+      audio.volume = vol() / 100;
       if (autoplay) audio.play().catch(() => {});
     };
     const net = driveKey(it.id), ready = blobURLs.get(it.id);
@@ -409,7 +409,7 @@ function loadYT(it, autoplay) {
       videoId: it.id,
       playerVars: { start: it.start || 0, rel: 0, playsinline: 1, autoplay: autoplay ? 1 : 0, disablekb: 1 },
       events: {
-        onReady: () => { ytReady = true; P.setRate(rate); P.setVol(+$("#vol").value); if (autoplay) yt.playVideo(); },
+        onReady: () => { ytReady = true; P.setRate(rate); P.setVol(vol()); if (autoplay) yt.playVideo(); },
         onStateChange: (e) => {
           if (e.data === 0) onEnded();
           if (e.data === 1) { media.claim("playlist"); P.setRate(rate); ytTitle(); }
@@ -517,7 +517,20 @@ $("#faster").onclick = () => applyRate(rate + 0.05);
 $$("[data-rate]").forEach((b) => (b.onclick = () => applyRate(+b.dataset.rate)));
 $("#vol").value = store.get("lp-vol", 100);
 $("#volVal").textContent = $("#vol").value;
-$("#vol").oninput = (e) => { P.setVol(+e.target.value); $("#volVal").textContent = e.target.value; store.set("lp-vol", +e.target.value); };
+// mute keeps the slider where it is; moving the slider unmutes
+let muted = false;
+const vol = () => (muted ? 0 : +$("#vol").value);
+function setMuted(m) {
+  muted = m;
+  P.setVol(vol());
+  setIcon($("#volBtn"), muted ? "mute" : "volume");
+  $("#volBtn").title = muted ? "Unmute (M)" : "Mute (M)";
+  $("#volBtn").setAttribute("aria-pressed", String(muted));
+  $("#volBtn").classList.toggle("on", muted);
+  $("#volVal").textContent = muted ? "mute" : $("#vol").value;
+}
+$("#volBtn").onclick = () => setMuted(!muted);
+$("#vol").oninput = (e) => { store.set("lp-vol", +e.target.value); setMuted(false); };
 
 // ------------------------------------------------------------------ a-b loop (buttons + draggable handles on the seek bar)
 function updateAB() {
@@ -612,7 +625,7 @@ onKeys("playlist", (e) => {
     arrowleft: () => P.seek(P.time() - 5), arrowright: () => P.seek(P.time() + 5),
     j: () => P.seek(P.time() - 10), l: () => P.seek(P.time() + 10),
     "[": () => applyRate(rate - 0.05), "]": () => applyRate(rate + 0.05),
-    a: setA, b: setB, c: clearAB,
+    a: setA, b: setB, c: clearAB, m: () => setMuted(!muted),
   }[e.key.toLowerCase()];
   if (act) { e.preventDefault(); act(); }
 });

@@ -257,6 +257,8 @@ select { background: var(--surface-2); border: 1px solid var(--line); border-rad
 .stepper button:hover { border-color: var(--accent); }
 .vol { display: flex; align-items: center; gap: 10px; color: var(--muted); }
 .vol input { flex: 1; }
+.vol-btn { width: 30px; height: 30px; margin: -4px -4px -4px -6px; color: var(--muted); }
+.vol-btn.on { color: var(--danger); }
 
 .queue-card { padding: 16px 10px 10px; position: sticky; top: 20px; max-height: calc(100vh - 40px); display: flex; flex-direction: column; }
 .queue-head { display: flex; align-items: center; justify-content: space-between; padding: 0 8px 10px; }
