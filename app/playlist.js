@@ -149,6 +149,56 @@ async function removeAt(i) {
   save(); renderQueue(); pruneCache();
 }
 
+// swap a song's link in place: keeps its spot and note, looks the title up again
+const relinkBox = $("#relink");
+function relinkDetect() {
+  const v = $("#relinkUrl").value.trim();
+  const p = v ? parseLink(v) : null;
+  const d = $("#relinkDetect");
+  d.hidden = !v;
+  d.textContent = p ? (p.type === "yt" ? "YouTube" : "Drive") : "link tidak dikenali";
+  d.classList.toggle("bad", !p);
+  $("#relinkOk").disabled = !p;
+}
+$("#relinkUrl").addEventListener("input", relinkDetect);
+// enter saves (the first button in the form is the close x)
+for (const f of ["#relinkUrl", "#relinkName"]) {
+  $(f).addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" || e.isComposing) return;
+    e.preventDefault();
+    if (!$("#relinkOk").disabled) relinkBox.close("ok");
+  });
+}
+
+function relink(i) {
+  const it = list[i];
+  if (!it) return;
+  $("#relinkTitle").textContent = `Ganti link lagu #${i + 1}`;
+  $("#relinkUrl").value = it.url;
+  $("#relinkName").value = "";
+  $("#relinkName").placeholder = it.title ? `Kosongkan untuk ambil dari link (sekarang: ${it.title})` : "Kosongkan untuk ambil judul dari link";
+  relinkDetect();
+  relinkBox.returnValue = "";
+  relinkBox.showModal();
+  $("#relinkUrl").select();
+  relinkBox.addEventListener("close", () => {
+    if (relinkBox.returnValue !== "ok" || list[i] !== it) return;
+    const url = $("#relinkUrl").value.trim();
+    const p = parseLink(url);
+    if (!p) return;
+    const name = $("#relinkName").value.trim();
+    const sameLink = p.type === it.type && p.id === it.id;
+    if (sameLink && !name) return;
+    const item = { url, ...p, title: name || (sameLink ? it.title : null), note: it.note };
+    list[i] = item;
+    if (i === idx) playIndex(i, isPlaying());
+    save(); renderQueue();
+    if (!item.title) fetchTitle(item);
+    toast(`Link lagu #${i + 1} diganti`);
+    pruneCache(); prefetchAll();
+  }, { once: true });
+}
+
 function moveItem(from, to) {
   if (from === to || to < 0 || to >= list.length) return;
   const [it] = list.splice(from, 1);
@@ -191,12 +241,19 @@ function renderQueue() {
       b.onclick = (e) => { e.stopPropagation(); sendToBass(it); };
       acts.append(b);
     }
+    const open = el("a", "icon-btn");
+    open.href = it.url; open.target = "_blank"; open.rel = "noopener noreferrer";
+    open.title = it.type === "yt" ? "Buka di YouTube" : "Buka di Google Drive";
+    open.append(icon("link"));
+    open.onclick = (e) => e.stopPropagation();
+    acts.append(open);
     const more = el("button", "icon-btn");
     more.type = "button"; more.title = "Lainnya"; more.append(icon("more"));
     more.onclick = (e) => {
       e.stopPropagation();
       showMenu(more, [
         { label: it.type === "yt" ? "Buka di YouTube" : "Buka di Google Drive", icon: "link", href: it.url },
+        { label: "Ganti link", icon: "refresh", onClick: () => relink(i) },
         i > 0 && { label: "Pindah ke atas", onClick: () => moveItem(i, i - 1) },
         i < list.length - 1 && { label: "Pindah ke bawah", onClick: () => moveItem(i, i + 1) },
         canBreakdown(it) && { label: "Breakdown lagu ini", icon: "bass", onClick: () => sendToBass(it) },

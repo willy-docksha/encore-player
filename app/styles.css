@@ -345,6 +345,7 @@ kbd { font: .74rem var(--f-mono); border: 1px solid var(--line); border-bottom-w
 .add-input .lead { color: var(--muted); width: 18px; height: 18px; }
 .add-input input { flex: 1; min-width: 0; border: 0; background: transparent; outline: none; font-size: .95rem; padding: 10px 0; }
 .detect { font: 600 .68rem var(--f-mono); text-transform: uppercase; padding: 3px 8px; border-radius: 6px; background: var(--bass-soft); color: var(--bass); white-space: nowrap; }
+.field-label { font-size: .8rem; color: var(--muted); margin-bottom: -8px; }
 .detect.bad { background: var(--loop-soft); color: var(--loop); }
 #view-bass .btn.primary { background: var(--bass); border-color: var(--bass); box-shadow: 0 4px 14px var(--bass-soft); color: #fff; }
 .drop-hint { margin: 8px 4px 0; font-size: .78rem; color: var(--muted); }

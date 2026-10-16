@@ -3,7 +3,7 @@
 // talks to it the same way.
 
 import { parseLink } from "./core.js";
-import { MODEL_URL } from "./config.js";
+import { MODEL_URL, AUTO_START } from "./config.js";
 import { PIPELINE_VERSION } from "./analysis/version.js";
 
 // models are big (~240 mb, downloaded once and cached); local dev always uses the models/ folder
@@ -314,7 +314,10 @@ async function createJob(form) {
     source = { type: "file", name: blob.name || "audio", title };
   } else fail("kind tidak dikenal");
   const id = crypto.randomUUID().replace(/-/g, "").slice(0, 10);
-  const meta = { id, title: title || source.url, source, source_type: source.type, status: "queued", stage: "Menunggu giliran", progress: 0, created: Date.now() / 1000 };
+  // without auto start a new song waits until "Mulai" is pressed
+  const meta = AUTO_START
+    ? { id, title: title || source.url, source, source_type: source.type, status: "queued", stage: "Menunggu giliran", progress: 0, created: Date.now() / 1000 }
+    : { id, title: title || source.url, source, source_type: source.type, status: "pending", stage: "Belum dimulai", progress: 0, created: Date.now() / 1000 };
   metas.set(id, meta);
   await put("jobs", meta);
   if (blob) await put("sources", blob, id);
@@ -359,6 +362,11 @@ export async function api(path, { method = "GET", body } = {}) {
     const data = await get("analysis", id);
     if (!data) fail("analisis belum siap");
     return { ...data, ...analysisInfo(m), url: m.source?.url || null, source_type: m.source_type };
+  }
+  if (action === "start") {
+    if (m.status !== "pending") fail("lagu ini sudah dimulai");
+    requeue(id);
+    return publicMeta(m);
   }
   if (action === "retry") {
     if (m.status !== "error") fail("hanya lagu yang gagal yang bisa dicoba lagi");

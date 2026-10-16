@@ -101,10 +101,12 @@ export async function submitLink(url, title) {
     const job = await api("/api/jobs", { method: "POST", body: fd });
     if (job.existing && job.status === "done") {
       toast(`“${job.title}” sudah pernah dianalisis`, { action: "Buka", onAction: () => router.go(`#/breakdown/${job.id}`) });
+    } else if (job.existing && job.status === "pending") {
+      toast("Lagu ini sudah ada di antrian, tinggal klik Mulai", { action: "Lihat", onAction: () => router.go("#/breakdown") });
     } else if (job.existing) {
       toast("Lagu ini sudah ada di antrian", { action: "Lihat", onAction: () => router.go("#/breakdown") });
     } else {
-      toast(`Masuk antrian Breakdown${title ? `: ${title}` : ""}`, { action: "Lihat", onAction: () => router.go("#/breakdown") });
+      toast(`Masuk antrian Breakdown${title ? `: ${title}` : ""}${job.status === "pending" ? ". Klik Mulai untuk memproses" : ""}`, { action: "Lihat", onAction: () => router.go("#/breakdown") });
     }
     poll();
     return true;
@@ -123,8 +125,8 @@ async function uploadFile(file) {
   fd.append("kind", "file");
   fd.append("file", file);
   try {
-    await api("/api/jobs", { method: "POST", body: fd });
-    toast(`Masuk antrian: ${file.name}`);
+    const job = await api("/api/jobs", { method: "POST", body: fd });
+    toast(`Masuk antrian: ${file.name}${job.status === "pending" ? ". Klik Mulai untuk memproses" : ""}`);
     poll();
   } catch (ex) {
     toast(ex.message, { error: true });
@@ -148,7 +150,7 @@ export async function poll() {
     }
     known.set(j.id, j.status);
   }
-  const active = jobs.filter((j) => ACTIVE.includes(j.status)).length;
+  const active = jobs.filter((j) => ACTIVE.includes(j.status) || j.status === "pending").length;
   $("#navBadge").hidden = !active;
   $("#navBadge").textContent = active;
   if (router.current === "bass") { renderQueue(); renderLibrary(); }
@@ -156,11 +158,22 @@ export async function poll() {
 }
 
 function renderQueue() {
-  const rows = jobs.filter((j) => ACTIVE.includes(j.status) || j.status === "error");
-  const order = (j) => (j.status === "running" ? 0 : j.status === "error" ? 1e6 : j.position || 1e5);
+  const rows = jobs.filter((j) => ACTIVE.includes(j.status) || j.status === "pending" || j.status === "error");
+  const order = (j) => (j.status === "running" ? 0 : j.status === "error" ? 1e6 : j.status === "pending" ? 2e5 + j.created : j.position || 1e5);
   $("#queueSection").hidden = !rows.length;
+  const pending = rows.filter((j) => j.status === "pending");
+  $("#startAll").hidden = pending.length < 2;
+  $("#startAll").onclick = () => startJobs(pending);
   $("#busyWarn").hidden = !rows.some((j) => ACTIVE.includes(j.status));
   $("#queueList").replaceChildren(...rows.sort((a, b) => order(a) - order(b)).map(queueRow));
+}
+
+async function startJobs(list) {
+  // oldest first so the queue keeps the order they were added
+  for (const j of [...list].sort((a, b) => a.created - b.created)) {
+    try { await api(`/api/jobs/${j.id}/start`, { method: "POST" }); } catch (ex) { toast(ex.message, { error: true }); }
+  }
+  poll();
 }
 
 function ring(j) {
@@ -179,7 +192,7 @@ function ring(j) {
   }
   const t = document.createElementNS(ns, "text");
   t.setAttribute("x", 21); t.setAttribute("y", 24.5); t.setAttribute("text-anchor", "middle");
-  t.textContent = j.status === "error" ? "!" : j.status === "running" || j.status === "downloading" ? `${pct}` : `#${j.position || "?"}`;
+  t.textContent = j.status === "error" ? "!" : j.status === "pending" ? "–" : j.status === "running" || j.status === "downloading" ? `${pct}` : `#${j.position || "?"}`;
   svg.append(t);
   return svg;
 }
@@ -194,9 +207,16 @@ function queueRow(j) {
   if (j.status === "running") sub.append(el("span", null, `${j.stage} · ${pct}%`), el("span", null, `selesai ${fmtEta(j.eta_sec || 0)}`));
   else if (j.status === "downloading") sub.append(el("span", null, `Mengunduh ${pct}%`));
   else if (j.status === "error") sub.append(el("span", "err", j.error || "gagal"));
+  else if (j.status === "pending") sub.append(el("span", null, "Belum dimulai"));
   else sub.append(el("span", null, `Antrian #${j.position || "?"}`), el("span", null, `mulai ±${fmtEta(j.eta_sec || 0)}`));
   main.append(sub);
   const acts = el("div", "job-acts");
+  if (j.status === "pending") {
+    const go = el("button", "btn sm primary");
+    go.type = "button"; go.append(icon("play"), "Mulai");
+    go.onclick = () => startJobs([j]);
+    acts.append(go);
+  }
   if (j.status === "error") {
     const retry = el("button", "btn sm");
     retry.type = "button"; retry.append(icon("refresh"), "Coba lagi");
@@ -204,9 +224,9 @@ function queueRow(j) {
     acts.append(retry);
   }
   const x = el("button", "icon-btn");
-  x.type = "button"; x.title = j.status === "error" ? "Hapus" : "Batalkan"; x.append(icon(j.status === "error" ? "trash" : "x"));
+  x.type = "button"; x.title = j.status === "error" || j.status === "pending" ? "Hapus" : "Batalkan"; x.append(icon(j.status === "error" || j.status === "pending" ? "trash" : "x"));
   x.onclick = async () => {
-    const ok = await confirmDialog(j.status === "error" ? "Hapus dari antrian?" : "Batalkan proses ini?", j.title || j.url, { ok: j.status === "error" ? "Hapus" : "Batalkan", danger: true });
+    const ok = await confirmDialog(j.status === "error" || j.status === "pending" ? "Hapus dari antrian?" : "Batalkan proses ini?", j.title || j.url, { ok: j.status === "error" || j.status === "pending" ? "Hapus" : "Batalkan", danger: true });
     if (!ok) return;
     await api(`/api/jobs/${j.id}`, { method: "DELETE" });
     poll();

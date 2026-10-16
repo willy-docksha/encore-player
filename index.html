@@ -214,7 +214,7 @@
         <p class="drop-hint" id="dropHint">atau tarik file audio ke mana saja di halaman ini</p>
 
         <section class="block" id="queueSection" hidden>
-          <div class="block-head"><h3>Sedang diproses</h3></div>
+          <div class="block-head"><h3>Antrian</h3><button class="btn sm" type="button" id="startAll" hidden><svg><use href="#i-play"/></svg>Mulai semua</button></div>
           <p class="busy-warn" id="busyWarn" hidden><strong>Jangan refresh atau tutup tab ini.</strong> Proses berjalan di browser, kalau halaman di-refresh atau ditutup, lagu yang sedang diproses mulai lagi dari 0%.</p>
           <ul class="jobs" id="queueList"></ul>
         </section>
@@ -324,6 +324,30 @@ https://youtu.be/…"></textarea>
     <footer class="sheet-foot">
       <button class="btn" type="button" id="replace">Ganti playlist</button>
       <button class="btn primary" type="button" id="add"><svg><use href="#i-plus"/></svg>Tambah</button>
+    </footer>
+  </form>
+</dialog>
+
+<!-- change a song's link -->
+<dialog class="sheet small" id="relink">
+  <form method="dialog" class="sheet-inner">
+    <header class="sheet-head">
+      <h2 id="relinkTitle">Ganti link</h2>
+      <button class="icon-btn" value="cancel" aria-label="Tutup"><svg><use href="#i-x"/></svg></button>
+    </header>
+    <label class="field-label" for="relinkUrl">Link baru</label>
+    <div class="add-input">
+      <svg class="lead"><use href="#i-link"/></svg>
+      <input id="relinkUrl" type="url" inputmode="url" autocomplete="off" placeholder="Tempel link YouTube atau Google Drive…">
+      <span class="detect" id="relinkDetect" hidden></span>
+    </div>
+    <label class="field-label" for="relinkName">Judul</label>
+    <div class="add-input">
+      <input id="relinkName" type="text" autocomplete="off" placeholder="Kosongkan untuk ambil judul dari link">
+    </div>
+    <footer class="sheet-foot">
+      <button class="btn" value="cancel">Batal</button>
+      <button class="btn primary" value="ok" id="relinkOk">Simpan</button>
     </footer>
   </form>
 </dialog>
