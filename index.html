@@ -3,670 +3,384 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Encore Player</title>
+<title>Encore</title>
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="apple-touch-icon" href="/icon-180.png">
 <link rel="icon" href="/icon-192.png">
-<meta name="theme-color" content="#2f6fed">
+<meta name="theme-color" content="#f4f5f8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0c0f14" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Encore">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap">
-<style>
-/* Layout: two columns on desktop — player + practice tools on the left, playlist on the right; stacks on phones */
-:root {
-  --bg: #eef0f3; --panel: #ffffff; --ink: #1b1f27; --muted: #69707d; --line: #d8dce3;
-  --accent: #2f6fed; --accent-ink: #ffffff; --accent-soft: rgba(47,111,237,.1);
-  --loop: #e0892b; --loop-soft: rgba(224,137,43,.18); --danger: #c7372f;
-  --f-display: "Familjen Grotesk", "Helvetica Neue", Arial, sans-serif;
-  --f-body: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
-  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
-  color-scheme: light;
-}
-@media (prefers-color-scheme: dark) {
-  :root { --bg: #12151b; --panel: #1b1f27; --ink: #e8ebf0; --muted: #8e96a4; --line: #2c323d;
-    --accent: #5b8ff5; --accent-ink: #0d1016; --accent-soft: rgba(91,143,245,.14);
-    --loop: #f0a04b; --loop-soft: rgba(240,160,75,.2); --danger: #ef6a60; color-scheme: dark; }
-}
-* { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--f-body); }
-.wrap { max-width: 1180px; margin: 0 auto; padding: calc(24px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) calc(60px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); display: flex; flex-direction: column; gap: 16px; }
-.grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 16px; align-items: start; }
-@media (max-width: 860px) { .grid { grid-template-columns: minmax(0, 1fr); } .grid > .col { display: contents; } #player { order: 1; } .pl { order: 2; } .tools { order: 3; } }
-@media (max-width: 520px) {
-  h1 { font-size: 1.35rem; }
-  .transport button { min-width: 52px; padding: 10px 8px; }
-  .modes { gap: 6px; }
-  .modes button { font-size: .78rem; padding: 6px 8px; }
-  .queue .open { padding: 10px 4px; }
-  .queue .acts button { padding: 8px 8px; }
-  .keys { display: none; }
-}
-.col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
-h1 { font-family: var(--f-display); font-weight: 700; font-size: 1.6rem; margin: 0; letter-spacing: -.01em; }
-.sub { color: var(--muted); margin: 2px 0 0; font-size: .9rem; }
-.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; min-width: 0; }
-h2 { font: 700 .75rem var(--f-display); text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin: 0 0 8px; }
-button { font: 500 .9rem var(--f-body); border: 1px solid var(--line); background: var(--panel); color: var(--ink);
-  border-radius: 8px; padding: 8px 12px; cursor: pointer; }
-button:hover:not(:disabled) { border-color: var(--accent); }
-button:disabled { opacity: .45; cursor: default; }
-button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
-button.on { background: var(--loop); border-color: var(--loop); color: #1b1f27; }
-.msg { font-size: .88rem; color: var(--danger); margin: 8px 0 0; }
-.msg.info { color: var(--muted); }
-.row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-
-.now { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; min-width: 0; }
-.badge { font: 500 .68rem var(--f-mono); text-transform: uppercase; letter-spacing: .06em; padding: 2px 6px; border-radius: 5px;
-  background: var(--bg); border: 1px solid var(--line); color: var(--muted); flex: none; }
-.title { font-family: var(--f-display); font-weight: 500; font-size: 1.05rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 1; }
-.pos { font: .8rem var(--f-mono); color: var(--muted); flex: none; }
-.media { position: relative; width: 100%; max-width: 100%; aspect-ratio: 16/9; border-radius: 8px; overflow: hidden; background: #000; }
-.media.audio { aspect-ratio: auto; height: 84px; background: var(--bg); }
-.media .note { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font: .85rem var(--f-mono); }
-#yt, #yt iframe { position: absolute; inset: 0; width: 100%; height: 100%; }
-
-.bar { position: relative; height: 34px; cursor: pointer; touch-action: none; margin-top: 12px; }
-.track { position: absolute; left: 0; right: 0; top: 14px; height: 6px; border-radius: 3px; background: var(--line); }
-.fill { position: absolute; left: 0; top: 14px; height: 6px; border-radius: 3px; background: var(--accent); width: 0; }
-.loopzone { position: absolute; top: 8px; height: 18px; background: var(--loop-soft); border-left: 2px solid var(--loop); border-right: 2px solid var(--loop); display: none; }
-.knob { position: absolute; top: 9px; width: 16px; height: 16px; margin-left: -8px; border-radius: 50%; background: var(--accent); border: 3px solid var(--panel); box-shadow: 0 0 0 1px var(--line); left: 0; }
-.times { display: flex; justify-content: space-between; font: .85rem var(--f-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
-
-.transport { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 10px; }
-.transport .tr { display: flex; justify-content: center; gap: 6px; }
-.transport button { min-width: 44px; padding: 8px 8px; font-family: var(--f-mono); }
-.transport .big { min-width: 48px; font-size: 1.05rem; }
-#play { min-width: 84px; font-size: 1rem; padding: 10px 14px; }
-.modes { display: flex; justify-content: center; gap: 8px; margin-top: 12px; flex-wrap: nowrap; }
-.modes button { font-size: .82rem; padding: 5px 10px; white-space: nowrap; }
-
-.tools { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
-.rate { font: 500 1.4rem var(--f-mono); min-width: 70px; text-align: center; font-variant-numeric: tabular-nums; }
-input[type=range] { width: 100%; accent-color: var(--accent); }
-.presets button { padding: 4px 8px; font: .8rem var(--f-mono); }
-.tools .center { text-align: center; }
-.tools .center .row { justify-content: center; }
-.small { font: .82rem var(--f-mono); color: var(--muted); margin: 8px 0 0; font-variant-numeric: tabular-nums; }
-
-textarea { width: 100%; min-height: 110px; resize: vertical; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--line);
-  background: var(--bg); color: var(--ink); font: .85rem/1.5 var(--f-mono); }
-.plhead { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
-.count { font: .8rem var(--f-mono); color: var(--muted); }
-ol.queue { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; max-height: 60vh; overflow-y: auto; }
-.queue li { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; align-items: center; gap: 6px; border-radius: 8px; padding: 2px 4px; }
-.queue li.cur { background: var(--accent-soft); }
-.queue li.cur .num { color: var(--accent); }
-.queue li.bad .t { color: var(--danger); }
-.num { font: .8rem var(--f-mono); color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
-.queue .open { border: none; background: transparent; text-align: left; padding: 7px 4px; display: flex; gap: 8px; align-items: center; min-width: 0; }
-.queue .open .txt { display: flex; flex-direction: column; min-width: 0; }
-.queue .open .t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-.queue .open .note, .nownote { font: .78rem var(--f-mono); color: var(--loop); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.nownote { margin: -6px 0 10px; }
-.editor { margin-top: 10px; }
-.dl { font: .7rem var(--f-mono); color: var(--muted); flex: none; }
-.dl.ok { color: #3fa66b; }
-.plname { font-family: var(--f-display); font-weight: 500; font-size: 1rem; margin: -2px 0 10px; }
-.queue li.cur .t { font-weight: 500; }
-.queue .acts { display: flex; gap: 0; }
-.queue .acts button { border: none; background: transparent; color: var(--muted); padding: 4px 6px; font-size: .85rem; }
-.queue .acts button:hover:not(:disabled) { color: var(--ink); }
-.empty { color: var(--muted); font-size: .9rem; margin: 12px 0 0; }
-.keys { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; align-items: center; font-size: .82rem; color: var(--muted); margin: 14px 0 0; }
-.keys dt { white-space: nowrap; }
-.keys dd { margin: 0; }
-kbd { font: .75rem var(--f-mono); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 1px 5px; background: var(--panel); }
-[hidden] { display: none !important; }
-</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="/app/styles.css">
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <h1>Encore Player</h1>
-    <p class="sub">Sekali lagi, sampai hafal. Tempel link YouTube atau Google Drive, lalu latihan dengan playlist, loop, dan atur kecepatan.</p>
-  </header>
+<!-- icon sprite -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.4-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z" fill="currentColor"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><rect x="6" y="4.5" width="4" height="15" rx="1.2" fill="currentColor"/><rect x="14" y="4.5" width="4" height="15" rx="1.2" fill="currentColor"/></symbol>
+    <symbol id="i-prev" viewBox="0 0 24 24"><path d="M18 6.2v11.6a.9.9 0 0 1-1.4.76L9 13.5V18a1 1 0 0 1-2 0V6a1 1 0 0 1 2 0v4.5l7.6-5.06A.9.9 0 0 1 18 6.2z" fill="currentColor"/></symbol>
+    <symbol id="i-next" viewBox="0 0 24 24"><path d="M6 6.2v11.6a.9.9 0 0 0 1.4.76L15 13.5V18a1 1 0 0 0 2 0V6a1 1 0 0 0-2 0v4.5L7.4 5.44A.9.9 0 0 0 6 6.2z" fill="currentColor"/></symbol>
+    <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor"/></symbol>
+    <symbol id="i-back5" viewBox="0 0 24 24"><path d="M12 5V2L7 6l5 4V7a6 6 0 1 1-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-fwd5" viewBox="0 0 24 24"><path d="M12 5V2l5 4-5 4V7a6 6 0 1 0 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-repeat" viewBox="0 0 24 24"><path d="M17 2l3 3-3 3M4 11V9a4 4 0 0 1 4-4h12M7 22l-3-3 3-3M20 13v2a4 4 0 0 1-4 4H4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-shuffle" viewBox="0 0 24 24"><path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-autonext" viewBox="0 0 24 24"><path d="M4 6h10M4 12h10M4 18h6M16 14l5 3-5 3z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h7M4.5 6h.01M4.5 12h.01M4.5 18h.01" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
+    <symbol id="i-bass" viewBox="0 0 24 24"><path d="M3 17l4-6 4 3 4-8 6 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="7" cy="11" r="1.6" fill="currentColor"/><circle cx="15" cy="6" r="1.6" fill="currentColor"/></symbol>
+    <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.8" fill="currentColor"/><circle cx="12" cy="12" r="1.8" fill="currentColor"/><circle cx="19" cy="12" r="1.8" fill="currentColor"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16 16l4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="i-keyboard" viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v12M7 11l5 5 5-5M4 20h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-volume" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9zM16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-grip" viewBox="0 0 24 24"><circle cx="9" cy="6" r="1.5" fill="currentColor"/><circle cx="15" cy="6" r="1.5" fill="currentColor"/><circle cx="9" cy="12" r="1.5" fill="currentColor"/><circle cx="15" cy="12" r="1.5" fill="currentColor"/><circle cx="9" cy="18" r="1.5" fill="currentColor"/><circle cx="15" cy="18" r="1.5" fill="currentColor"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-music" viewBox="0 0 24 24"><path d="M9 18V5l11-2v13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6.5" cy="18" r="2.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="17.5" cy="16" r="2.5" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+    <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="16" cy="7" r="2.2" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="10" cy="17" r="2.2" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+    <symbol id="i-mac" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 20h8M12 16v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  </defs>
+</svg>
 
-  <div class="grid">
-    <div class="col">
-      <section class="panel" id="player">
-        <div class="now">
-          <span class="badge" id="srcBadge">—</span>
-          <span class="title" id="title">Belum ada lagu</span>
-          <span class="pos" id="pos"></span>
-        </div>
-        <p class="nownote" id="nowNote" hidden></p>
-        <div class="media audio" id="media"><div id="yt"></div><div class="note" id="note">Tambahkan link di playlist untuk mulai</div></div>
-        <audio id="audio" preload="auto"></audio>
-
-        <div class="bar" id="bar"><div class="track"></div><div class="loopzone" id="loopzone"></div><div class="fill" id="fill"></div><div class="knob" id="knob"></div></div>
-        <div class="times"><span id="cur">0:00</span><span id="dur">0:00</span></div>
-
-        <div class="transport">
-          <div class="tr">
-            <button type="button" class="big" id="prev" title="Sebelumnya (P)">⏮</button>
-            <button type="button" id="play" class="primary">Play</button>
-            <button type="button" class="big" id="stop" title="Stop (S)">⏹</button>
-            <button type="button" class="big" id="next" title="Berikutnya (N)">⏭</button>
-          </div>
-          <div class="tr">
-            <button type="button" data-skip="-10">−10s</button>
-            <button type="button" data-skip="-5">−5s</button>
-            <button type="button" data-skip="5">+5s</button>
-            <button type="button" data-skip="10">+10s</button>
-          </div>
-        </div>
-        <div class="modes">
-          <button type="button" id="repeat" title="Ganti mode ulang (R)">🔁 Tanpa ulang</button>
-          <button type="button" id="shuffle">Acak: mati</button>
-          <button type="button" id="autonext" class="on">Auto next: nyala</button>
-        </div>
-        <p class="msg" id="msg" hidden></p>
-      </section>
-
-      <section class="tools">
-        <div class="panel center">
-          <h2>Kecepatan</h2>
-          <div class="row"><button type="button" id="slower">−</button><span class="rate" id="rate">1.00×</span><button type="button" id="faster">+</button></div>
-          <div class="row presets" style="margin-top:8px">
-            <button type="button" data-rate="0.5">0.5</button><button type="button" data-rate="0.75">0.75</button>
-            <button type="button" data-rate="1">1</button><button type="button" data-rate="1.25">1.25</button>
-          </div>
-          <p class="small">Berlaku untuk semua lagu</p>
-        </div>
-        <div class="panel center">
-          <h2>Loop A–B</h2>
-          <div class="row"><button type="button" id="setA">Set A</button><button type="button" id="setB">Set B</button><button type="button" id="clearAB">Hapus</button></div>
-          <p class="small" id="abText">Belum ada loop</p>
-        </div>
-        <div class="panel">
-          <h2>Volume</h2>
-          <input id="vol" type="range" min="0" max="100" value="100" aria-label="Volume">
-          <dl class="keys">
-            <dt><kbd>Space</kbd></dt><dd>play / pause</dd>
-            <dt><kbd>N</kbd> <kbd>P</kbd></dt><dd>next / prev</dd>
-            <dt><kbd>S</kbd></dt><dd>stop</dd>
-            <dt><kbd>R</kbd></dt><dd>ganti mode ulang</dd>
-            <dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>mundur / maju 5 detik</dd>
-            <dt><kbd>J</kbd> <kbd>L</kbd></dt><dd>mundur / maju 10 detik</dd>
-            <dt><kbd>[</kbd> <kbd>]</kbd></dt><dd>pelan / cepat</dd>
-            <dt><kbd>A</kbd> <kbd>B</kbd> <kbd>C</kbd></dt><dd>set A / set B / hapus loop</dd>
-          </dl>
-        </div>
-      </section>
+<div class="shell">
+  <!-- sidebar (desktop) / tab bar (phone) -->
+  <nav class="nav" aria-label="Navigasi utama">
+    <a class="brand" href="#/">
+      <span class="brand-mark"><svg><use href="#i-bass"/></svg></span>
+      <span class="brand-text">Encore<small>Sekali lagi, sampai hafal</small></span>
+    </a>
+    <a class="nav-item" href="#/" data-nav="playlist">
+      <svg><use href="#i-list"/></svg><span>Playlist</span>
+      <span class="nav-eq" id="navEq" hidden><i></i><i></i><i></i></span>
+    </a>
+    <a class="nav-item" href="#/breakdown" data-nav="bass">
+      <svg><use href="#i-bass"/></svg><span>Breakdown</span>
+      <span class="nav-badge" id="navBadge" hidden></span>
+    </a>
+    <div class="nav-foot">
+      <button class="nav-item ghost" type="button" id="shortcutsBtn"><svg><use href="#i-keyboard"/></svg><span>Shortcut</span></button>
+      <div class="server" id="serverStatus" title="Status server Breakdown">
+        <span class="dot"></span><span class="server-text">Memeriksa…</span>
+      </div>
     </div>
+  </nav>
 
-    <section class="panel pl">
-      <div class="plhead"><h2>Playlist</h2><span class="count" id="count"></span></div>
-      <p class="plname" id="plName" hidden></p>
-      <button type="button" class="primary" id="openEditor">+ Tambah ke playlist</button>
-      <div class="editor" id="editor" hidden>
-        <textarea id="links" placeholder="Tempel link atau langsung satu chat daftar lagu. Contoh:
+  <main class="main">
+    <!-- ============================================================ PLAYLIST -->
+    <section class="view" id="view-playlist" data-view="playlist">
+      <header class="page-head">
+        <div>
+          <p class="eyebrow">Playlist latihan</p>
+          <h1 id="plName">Playlist</h1>
+        </div>
+        <div class="head-actions">
+          <span class="count" id="count"></span>
+          <button class="btn primary" type="button" id="openEditor"><svg><use href="#i-plus"/></svg>Tambah lagu</button>
+        </div>
+      </header>
+
+      <div class="pl-grid">
+        <div class="pl-main">
+          <section class="card player" id="player">
+            <div class="media is-audio" id="media">
+              <div id="yt"></div>
+              <div class="audio-art" id="audioArt">
+                <div class="art-bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+                <span class="art-label" id="note">Tambahkan lagu untuk mulai latihan</span>
+              </div>
+            </div>
+            <audio id="audio" preload="auto"></audio>
+
+            <div class="now">
+              <div class="now-text">
+                <div class="now-meta"><span class="chip" id="srcBadge">—</span><span class="pos" id="pos"></span></div>
+                <h2 class="now-title" id="title">Belum ada lagu</h2>
+                <p class="now-note" id="nowNote" hidden></p>
+              </div>
+              <button class="btn ghost sm bass-link" type="button" id="toBass" hidden title="Pisahkan instrumen, lihat not & chord lagu ini">
+                <svg><use href="#i-bass"/></svg>Breakdown
+              </button>
+            </div>
+
+            <div class="seek" id="bar" role="slider" aria-label="Posisi lagu" tabindex="0">
+              <div class="seek-track"></div>
+              <div class="seek-loop" id="loopzone"><span class="ab-handle" data-h="A">A</span><span class="ab-handle" data-h="B">B</span></div>
+              <div class="seek-fill" id="fill"></div>
+              <div class="seek-knob" id="knob"></div>
+              <div class="seek-tip" id="seekTip" hidden></div>
+            </div>
+            <div class="times"><span id="cur">0:00</span><span id="dur">0:00</span></div>
+
+            <div class="transport">
+              <button class="icon-btn" type="button" id="repeat" title="Mode ulang (R)"><svg><use href="#i-repeat"/></svg><span class="mini" id="repeatOne" hidden>1</span></button>
+              <button class="icon-btn" type="button" id="prev" title="Sebelumnya (P)"><svg><use href="#i-prev"/></svg></button>
+              <button class="icon-btn lg" type="button" data-skip="-5" title="Mundur 5 detik (←)"><svg><use href="#i-back5"/></svg><span class="skip-n">5</span></button>
+              <button class="play-btn" type="button" id="play" title="Play / pause (Spasi)"><svg><use href="#i-play"/></svg></button>
+              <button class="icon-btn lg" type="button" data-skip="5" title="Maju 5 detik (→)"><svg><use href="#i-fwd5"/></svg><span class="skip-n">5</span></button>
+              <button class="icon-btn" type="button" id="next" title="Berikutnya (N)"><svg><use href="#i-next"/></svg></button>
+              <button class="icon-btn" type="button" id="shuffle" title="Acak"><svg><use href="#i-shuffle"/></svg></button>
+            </div>
+            <div class="transport-sub">
+              <button class="pill" type="button" data-skip="-10" title="J">−10s</button>
+              <button class="pill" type="button" id="stop" title="Stop (S)"><svg><use href="#i-stop"/></svg>Stop</button>
+              <button class="pill toggle" type="button" id="autonext" title="Otomatis lanjut ke lagu berikutnya"><svg><use href="#i-autonext"/></svg>Auto next</button>
+              <button class="pill" type="button" data-skip="10" title="L">+10s</button>
+            </div>
+            <p class="msg" id="msg" hidden></p>
+          </section>
+
+          <section class="tools">
+            <div class="card tool">
+              <div class="tool-head"><h3>Kecepatan</h3><span class="tool-val" id="rate">1.00×</span></div>
+              <div class="seg" id="ratePresets">
+                <button type="button" data-rate="0.5">0.5</button><button type="button" data-rate="0.75">0.75</button>
+                <button type="button" data-rate="1">1×</button><button type="button" data-rate="1.25">1.25</button>
+              </div>
+              <div class="stepper"><button type="button" id="slower" title="Lebih pelan ([)">−</button><span>0.05 per langkah</span><button type="button" id="faster" title="Lebih cepat (])">+</button></div>
+            </div>
+            <div class="card tool">
+              <div class="tool-head"><h3>Loop A–B</h3><span class="tool-val sm" id="abText">Belum ada</span></div>
+              <div class="seg">
+                <button type="button" id="setA" title="Set titik A (A)">Set A</button>
+                <button type="button" id="setB" title="Set titik B (B)">Set B</button>
+                <button type="button" id="clearAB" title="Hapus loop (C)">Hapus</button>
+              </div>
+              <p class="tool-hint">Geser penanda A/B di progress bar untuk merapikan loop.</p>
+            </div>
+            <div class="card tool">
+              <div class="tool-head"><h3>Volume</h3><span class="tool-val" id="volVal">100</span></div>
+              <div class="vol"><svg><use href="#i-volume"/></svg><input id="vol" type="range" min="0" max="100" value="100" aria-label="Volume"></div>
+            </div>
+          </section>
+        </div>
+
+        <aside class="card queue-card">
+          <div class="queue-head">
+            <h3>Antrian lagu</h3>
+            <span class="tool-hint" id="offlineHint" hidden><svg><use href="#i-check"/></svg>tersimpan offline</span>
+          </div>
+          <ol class="queue" id="queue"></ol>
+          <div class="empty" id="qEmpty">
+            <div class="empty-art"><svg><use href="#i-music"/></svg></div>
+            <p><b>Playlist masih kosong</b><br>Tempel link YouTube/Google Drive, atau langsung satu chat daftar lagu dari WhatsApp.</p>
+            <button class="btn primary" type="button" data-open-editor><svg><use href="#i-plus"/></svg>Tambah lagu</button>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ============================================================ BASS HOME -->
+    <section class="view" id="view-bass" data-view="bass" hidden>
+      <header class="page-head">
+        <div>
+          <p class="eyebrow">Breakdown</p>
+          <h1>Pisahkan instrumen, lihat not &amp; chord-nya</h1>
+        </div>
+      </header>
+
+      <div class="offline-card card" id="bassOffline" hidden>
+        <div class="empty-art"><svg><use href="#i-mac"/></svg></div>
+        <div>
+          <h3>Breakdown butuh server Encore</h3>
+          <p>Memisahkan instrumen dan membaca not memakai AI yang berat, jadi tidak jalan di versi online ini. Buka Encore di Mac dengan klik dua kali <code>start.command</code>, lalu akses <code>http://localhost:8765</code>. Playlist tetap bisa dipakai di sini.</p>
+          <button class="btn" type="button" id="recheckServer"><svg><use href="#i-refresh"/></svg>Cek lagi</button>
+        </div>
+      </div>
+
+      <div id="bassOnline">
+        <form class="card add-bar" id="jobForm">
+          <div class="add-input">
+            <svg class="lead"><use href="#i-link"/></svg>
+            <input id="urlInput" type="url" inputmode="url" autocomplete="off" placeholder="Tempel link YouTube atau Google Drive…" aria-label="Link lagu">
+            <span class="detect" id="detect" hidden></span>
+          </div>
+          <label class="btn" title="Upload file audio dari komputer">
+            <svg><use href="#i-upload"/></svg><span>File</span>
+            <input type="file" id="fileInput" accept="audio/*,video/*,.mp3,.wav,.flac,.m4a,.ogg,.aac" hidden>
+          </label>
+          <button class="btn primary" type="submit" id="submitBtn"><svg><use href="#i-plus"/></svg><span>Analisis</span></button>
+        </form>
+        <p class="drop-hint" id="dropHint">atau tarik file audio ke mana saja di halaman ini</p>
+
+        <section class="block" id="queueSection" hidden>
+          <div class="block-head"><h3>Sedang diproses</h3></div>
+          <ul class="jobs" id="queueList"></ul>
+        </section>
+
+        <section class="block">
+          <div class="block-head">
+            <h3>Library <span class="count" id="libCount"></span></h3>
+            <label class="search"><svg><use href="#i-search"/></svg><input id="libSearch" type="search" placeholder="Cari lagu…" aria-label="Cari lagu"></label>
+          </div>
+          <div class="lib-grid" id="jobList"></div>
+          <div class="empty" id="emptyLib" hidden>
+            <div class="empty-art"><svg><use href="#i-bass"/></svg></div>
+            <p><b>Belum ada lagu yang di-breakdown</b><br>Tempel link di atas atau tarik file audio ke sini.</p>
+          </div>
+        </section>
+      </div>
+      <div class="dropzone" id="dropzone" hidden><div><svg><use href="#i-upload"/></svg><p>Lepas untuk mulai analisis</p></div></div>
+    </section>
+
+    <!-- ============================================================ BASS SONG -->
+    <section class="view song" id="view-song" data-view="song" hidden>
+      <header class="song-head">
+        <div class="song-title-wrap">
+          <h1 class="song-title" id="songTitle">…</h1>
+          <div class="chips" id="songChips"></div>
+        </div>
+        <div class="head-actions" id="songActions"></div>
+      </header>
+
+      <div class="now-strip">
+        <div class="now-box"><span class="label">Chord</span><span class="big" id="nowChord">–</span><span class="sub" id="nextChord"></span></div>
+        <div class="now-box"><span class="label" id="nowNoteLabel">Not bass</span><span class="big accent" id="bdNote">–</span><span class="sub" id="nowFret"></span></div>
+        <div class="switches">
+          <div class="seg sub-switch" role="tablist" aria-label="Tampilan">
+            <button type="button" class="active" data-sub="graph">Grafik</button>
+            <button type="button" data-sub="tab" title="(T)">Tab</button>
+          </div>
+          <div class="seg part-switch" role="tablist" aria-label="Bagian">
+            <button type="button" data-part="stack" title="Semua instrumen bertumpuk (M)">Multitrack</button>
+            <button type="button" data-part="drums">Drum</button>
+            <button type="button" class="active" data-part="bass">Bass</button>
+            <button type="button" data-part="vocals">Vokal</button>
+            <button type="button" data-part="piano">Piano</button>
+            <button type="button" data-part="guitar">Gitar</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="stage card"><canvas id="roll"></canvas></div>
+      <canvas id="overview" class="overview"></canvas>
+
+      <div class="dock card">
+        <div class="dock-main">
+          <button class="play-btn sm" type="button" id="bPlay" title="Play / pause (Spasi)"><svg><use href="#i-play"/></svg></button>
+          <span class="time" id="timeLabel">0:00 / 0:00</span>
+          <button class="icon-btn dock-more" type="button" id="dockMore" title="Loop, mixer, zoom, senar" aria-expanded="false"><svg><use href="#i-sliders"/></svg></button>
+        </div>
+        <div class="dock-group">
+          <span class="label">Speed</span>
+          <div class="seg" id="bSpeed">
+            <button type="button" data-speed="0.5">0.5</button><button type="button" data-speed="0.75">0.75</button>
+            <button type="button" data-speed="0.85">0.85</button><button type="button" data-speed="1" class="active">1×</button>
+          </div>
+        </div>
+        <div class="dock-group extra">
+          <span class="label">Loop</span>
+          <div class="seg">
+            <button type="button" id="loopA" title="Set A (A)">A</button>
+            <button type="button" id="loopB" title="Set B (B)">B</button>
+            <button type="button" id="loopToggle" title="Loop on/off (L)">Off</button>
+            <button type="button" id="loopClear" title="Hapus loop (Esc)" aria-label="Hapus loop"><svg><use href="#i-x"/></svg></button>
+          </div>
+        </div>
+        <div class="dock-group extra mixer" id="mixer" aria-label="Mixer"></div>
+        <div class="dock-group extra">
+          <span class="label">Zoom</span>
+          <input type="range" id="zoom" min="2" max="20" step="0.5" value="7" aria-label="Zoom">
+        </div>
+        <div class="dock-group extra">
+          <select id="tuningSel" aria-label="Jumlah senar">
+            <option value="4">4 senar</option>
+            <option value="5">5 senar</option>
+          </select>
+          <span id="tuningHint" class="hint-inline"></span>
+        </div>
+      </div>
+      <div id="stemAudio" hidden></div>
+    </section>
+  </main>
+</div>
+
+<!-- add songs sheet -->
+<dialog class="sheet" id="editor">
+  <form method="dialog" class="sheet-inner">
+    <header class="sheet-head">
+      <h2>Tambah lagu</h2>
+      <button class="icon-btn" value="cancel" aria-label="Tutup"><svg><use href="#i-x"/></svg></button>
+    </header>
+    <textarea id="links" spellcheck="false" placeholder="Tempel link atau satu chat daftar lagu. Contoh:
+Ibadah Minggu
 1) Menikmati Kasih
 https://drive.google.com/file/d/…
 2) Tetap Mengasihi
+Chorus saja
 https://youtu.be/…"></textarea>
-        <div class="row" style="margin-top:8px">
-          <button type="button" class="primary" id="add">Tambah</button>
-          <button type="button" id="replace">Ganti playlist</button>
-          <button type="button" id="cancelEditor">Batal</button>
-        </div>
+    <div class="preview" id="preview"></div>
+    <footer class="sheet-foot">
+      <button class="btn" type="button" id="replace">Ganti playlist</button>
+      <button class="btn primary" type="button" id="add"><svg><use href="#i-plus"/></svg>Tambah</button>
+    </footer>
+  </form>
+</dialog>
+
+<!-- confirm -->
+<dialog class="sheet small" id="confirm">
+  <form method="dialog" class="sheet-inner">
+    <h2 id="confirmTitle"></h2>
+    <p id="confirmText"></p>
+    <footer class="sheet-foot">
+      <button class="btn" value="cancel">Batal</button>
+      <button class="btn primary" value="ok" id="confirmOk">OK</button>
+    </footer>
+  </form>
+</dialog>
+
+<!-- shortcuts -->
+<dialog class="sheet" id="shortcuts">
+  <form method="dialog" class="sheet-inner">
+    <header class="sheet-head">
+      <h2>Shortcut keyboard</h2>
+      <button class="icon-btn" value="cancel" aria-label="Tutup"><svg><use href="#i-x"/></svg></button>
+    </header>
+    <div class="keys-grid">
+      <div>
+        <h3>Playlist</h3>
+        <dl class="keys">
+          <dt><kbd>Space</kbd></dt><dd>play / pause</dd>
+          <dt><kbd>N</kbd> <kbd>P</kbd></dt><dd>berikutnya / sebelumnya</dd>
+          <dt><kbd>S</kbd></dt><dd>stop</dd>
+          <dt><kbd>R</kbd></dt><dd>ganti mode ulang</dd>
+          <dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>mundur / maju 5 detik</dd>
+          <dt><kbd>J</kbd> <kbd>L</kbd></dt><dd>mundur / maju 10 detik</dd>
+          <dt><kbd>[</kbd> <kbd>]</kbd></dt><dd>pelan / cepat</dd>
+          <dt><kbd>A</kbd> <kbd>B</kbd> <kbd>C</kbd></dt><dd>set A / set B / hapus loop</dd>
+        </dl>
       </div>
-      <p class="msg" id="addMsg" hidden></p>
-      <ol class="queue" id="queue"></ol>
-      <p class="small" id="offlineHint" hidden>✓ = tersimpan di perangkat, bisa diputar tanpa internet</p>
-      <p class="empty" id="qEmpty">Playlist masih kosong. Klik "Tambah ke playlist", lalu tempel link atau chat daftar lagu.</p>
-    </section>
-  </div>
-</div>
+      <div>
+        <h3>Breakdown</h3>
+        <dl class="keys">
+          <dt><kbd>Space</kbd></dt><dd>play / pause</dd>
+          <dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>geser 2 detik</dd>
+          <dt><kbd>A</kbd> <kbd>B</kbd></dt><dd>set titik loop</dd>
+          <dt><kbd>L</kbd> <kbd>Esc</kbd></dt><dd>loop on/off / hapus</dd>
+          <dt><kbd>M</kbd></dt><dd>multitrack</dd>
+          <dt><kbd>V</kbd></dt><dd>bagian berikutnya (drum, bass, vokal, …)</dd>
+          <dt><kbd>T</kbd></dt><dd>grafik ↔ tab (bass, gitar)</dd>
+          <dt><kbd>1</kbd>–<kbd>6</kbd></dt><dd>mute kanal mixer</dd>
+          <dt>klik / Shift+drag</dt><dd>lompat / pilih loop di grafik</dd>
+          <dt>klik nama lajur</dt><dd>mute / unmute (multitrack)</dd>
+        </dl>
+      </div>
+    </div>
+  </form>
+</dialog>
 
-<script>
-const $ = s => document.querySelector(s);
-const audio = $('#audio');
-const store = { get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } },
-                set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
+<div class="toasts" id="toasts" aria-live="polite"></div>
 
-let list = store.get('lp-playlist', []);   // [{url,type,id,start,title,bad}]
-let idx = store.get('lp-index', -1);
-let repeat = store.get('lp-repeat', 'off'); // off | all | one
-let shuffle = store.get('lp-shuffle', false);
-let autonext = store.get('lp-autonext', true);
-let rate = store.get('lp-rate', 1);
-let cur = null;                               // item currently loaded
-let yt = null, ytReady = false, ytApi = null, pendingYT = null;
-let A = null, B = null, history = [], loadTok = 0;
-
-const fmt = t => { t = Math.max(0, Math.floor(t || 0)); const h = Math.floor(t/3600), m = Math.floor(t%3600/60), s = t%60;
-  return (h ? h + ':' + String(m).padStart(2,'0') : m) + ':' + String(s).padStart(2,'0'); };
-function save() { store.set('lp-playlist', list); store.set('lp-index', idx); }
-
-// ---------- link parsing ----------
-function parseT(t) { if (/^\d+$/.test(t)) return +t; const m = t.match(/(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?/); return m ? (+m[1]||0)*3600 + (+m[2]||0)*60 + (+m[3]||0) : 0; }
-function parse(raw) {
-  let u; try { u = new URL(raw.trim()); } catch { return null; }
-  const h = u.hostname.replace(/^(www|m)\./, '');
-  const t = u.searchParams.get('t') || u.searchParams.get('start'); const start = t ? parseT(t) : 0;
-  if (h === 'youtu.be') { const id = u.pathname.slice(1).split('/')[0]; return id ? { type: 'yt', id, start } : null; }
-  if (h.endsWith('youtube.com')) {
-    let id = u.searchParams.get('v'); const m = u.pathname.match(/\/(shorts|embed|live|v)\/([\w-]{6,})/);
-    if (!id && m) id = m[2]; return id ? { type: 'yt', id, start } : null;
-  }
-  if (/(^|\.)(drive|docs)\.google\.com$/.test(h) || h === 'drive.usercontent.google.com') {
-    const m = u.pathname.match(/\/d\/([\w-]{10,})/); const id = m ? m[1] : u.searchParams.get('id');
-    return id ? { type: 'drive', id, start: 0 } : null;
-  }
-  return null;
-}
-// Reads pasted text (e.g. a WhatsApp song list): every link becomes a song; the numbered line above it
-// ("1) Judul lagu") becomes its title, lines between that and the link become notes ("Chorus saja"),
-// and the lines before the first song become the playlist name.
-const URL_RE = /https?:\/\/[^\s<>"']+/g;
-const clean = l => l.replace(/[*_~`]+/g, '').replace(/\s+/g, ' ').trim();
-function extract(text) {
-  const ok = [], bad = [];
-  let block = [], name = null;
-  for (const raw of text.split(/\r?\n/)) {
-    const urls = raw.match(URL_RE);
-    if (!urls) { const l = clean(raw); if (l) block.push(l); continue; }
-    const before = clean(raw.slice(0, raw.indexOf(urls[0])));
-    if (before) block.push(before);
-    const numbered = block.findLastIndex(l => /^\d{1,3}\s*[).:-]\s*\S/.test(l));
-    let title = null, note = null;
-    if (numbered >= 0) {
-      title = block[numbered].replace(/^\d{1,3}\s*[).:-]\s*/, '');
-      note = block.slice(numbered + 1).join(' · ') || null;
-    } else if (block.length === 1 && block[0].length <= 120) title = block[0];
-    if (title) title = title.replace(/[\s:\-–—>|]+$/, '') || null;
-    if (name === null && !ok.length && !bad.length) name = block.slice(0, numbered >= 0 ? numbered : block.length).join(' · ') || '';
-    for (const u of urls) {
-      const url = u.replace(/[)*_.,;!]+$/, '');
-      const p = parse(url);
-      p ? ok.push({ url, ...p, title: urls.length === 1 ? title : null, note: urls.length === 1 ? note : null }) : bad.push(url);
-    }
-    block = [];
-  }
-  return { ok, bad, name: name || null };
-}
-
-// ---------- titles (via local server) ----------
-async function fetchTitle(item) {
-  if (item.title) return;
-  try {
-    const r = await fetch(`/title?type=${item.type}&id=${encodeURIComponent(item.id)}`);
-    if (r.ok) { const j = await r.json(); if (j.title) { item.title = j.title; save(); renderQueue(); if (item === cur) { $('#title').textContent = j.title; updateMediaSession(); } } }
-  } catch {}
-}
-
-// ---------- playlist ops ----------
-function addLinks(replace) {
-  const { ok, bad } = extract($('#links').value);
-  const m = $('#addMsg');
-  if (!ok.length) { clearTimeout(addLinks.t); m.textContent = 'Tidak ada link YouTube atau Google Drive yang dikenali.'; m.className = 'msg'; m.hidden = false; return; }
-  if (replace) { stop(); list = []; idx = -1; cur = null; history = []; }
-  const wasEmpty = !list.length;
-  if (wasEmpty) setName(extract($('#links').value).name);
-  list.push(...ok); save(); renderQueue();
-  ok.forEach(fetchTitle);
-  $('#links').value = '';
-  const fromChat = ok.filter(x => x.title).length;
-  m.textContent = `${ok.length} lagu ditambahkan` + (fromChat ? ` (${fromChat} judul dari chat)` : '') + (bad.length ? ` · ${bad.length} link dilewati karena bukan YouTube/Drive` : '');
-  m.className = 'msg info'; m.hidden = false;
-  clearTimeout(addLinks.t); addLinks.t = setTimeout(() => m.hidden = true, 6000);
-  toggleEditor(false);
-  if (wasEmpty) playIndex(0, false);
-  pruneCache(); prefetchAll();
-}
-function toggleEditor(open) {
-  $('#editor').hidden = !open; $('#openEditor').hidden = open;
-  if (open) $('#links').focus(); else $('#links').value = '';
-}
-$('#openEditor').onclick = () => { $('#addMsg').hidden = true; toggleEditor(true); };
-$('#cancelEditor').onclick = () => toggleEditor(false);
-$('#add').onclick = () => addLinks(false);
-$('#replace').onclick = () => addLinks(true);
-function setName(n) { store.set('lp-name', n); const el = $('#plName'); el.textContent = n || ''; el.hidden = !n; }
-
-function removeAt(i) {
-  const playing = i === idx;
-  list.splice(i, 1);
-  if (i < idx) idx--;
-  if (playing) { if (list.length) playIndex(Math.min(idx, list.length - 1), isPlaying()); else { stop(); idx = -1; cur = null; showEmptyPlayer(); } }
-  if (!list.length) setName(null);
-  save(); renderQueue(); pruneCache();
-}
-function move(i, d) {
-  const j = i + d; if (j < 0 || j >= list.length) return;
-  [list[i], list[j]] = [list[j], list[i]];
-  if (idx === i) idx = j; else if (idx === j) idx = i;
-  save(); renderQueue();
-}
-
-function renderQueue() {
-  const ol = $('#queue'); ol.innerHTML = '';
-  $('#qEmpty').hidden = list.length > 0;
-  $('#plName').hidden = !list.length || !$('#plName').textContent;
-  $('#offlineHint').hidden = !hasCache || !list.some(x => x.type === 'drive');
-  $('#count').textContent = list.length ? `${list.length} lagu` : '';
-  list.forEach((it, i) => {
-    const li = document.createElement('li');
-    li.className = (i === idx ? 'cur' : '') + (it.bad ? ' bad' : '');
-    const num = document.createElement('span'); num.className = 'num'; num.textContent = i === idx ? (isPlaying() ? '▶' : '❚❚') : i + 1;
-    const b = document.createElement('button'); b.type = 'button'; b.className = 'open'; b.title = it.url;
-    b.innerHTML = `<span class="badge">${it.type === 'yt' ? 'YT' : 'Drive'}</span>`;
-    if (it.type === 'drive') { const d = document.createElement('span'); d.dataset.dl = it.id; paintDl(d, it.id); b.append(d); }
-    const txt = document.createElement('span'); txt.className = 'txt';
-    const t = document.createElement('span'); t.className = 't'; t.textContent = it.title || it.url; txt.append(t);
-    if (it.note) { const n = document.createElement('span'); n.className = 'note'; n.textContent = it.note; txt.append(n); }
-    b.insertBefore(txt, b.querySelector('[data-dl]'));
-    b.onclick = () => playIndex(i, true);
-    const acts = document.createElement('span'); acts.className = 'acts';
-    [['↑', 'Naik', () => move(i, -1), i === 0], ['↓', 'Turun', () => move(i, 1), i === list.length - 1], ['✕', 'Hapus', () => removeAt(i), false]]
-      .forEach(([s, lbl, fn, dis]) => { const x = document.createElement('button'); x.type = 'button'; x.textContent = s; x.title = lbl; x.setAttribute('aria-label', lbl); x.disabled = dis; x.onclick = fn; acts.append(x); });
-    li.append(num, b, acts); ol.append(li);
-  });
-  $('#pos').textContent = idx >= 0 && list.length ? `${idx + 1} / ${list.length}` : '';
-  $('#prev').disabled = $('#next').disabled = !list.length;
-}
-
-// ---------- engine ----------
-const P = {
-  play()  { if (!cur) { if (list.length) playIndex(Math.max(idx, 0), true); return; }
-            cur.type === 'yt' ? ytReady && yt.playVideo() : audio.play().catch(() => {}); },
-  pause() { cur?.type === 'yt' ? ytReady && yt.pauseVideo() : audio.pause(); },
-  time()  { return cur?.type === 'yt' ? (ytReady ? yt.getCurrentTime() || 0 : 0) : audio.currentTime; },
-  dur()   { return cur?.type === 'yt' ? (ytReady ? yt.getDuration() || 0 : 0) : (isFinite(audio.duration) ? audio.duration : 0); },
-  seek(t) { const d = P.dur(); t = Math.max(0, d ? Math.min(t, d - 0.05) : t);
-            cur?.type === 'yt' ? ytReady && yt.seekTo(t, true) : (audio.currentTime = t); },
-  setRate(r) { if (ytReady) yt.setPlaybackRate(r); audio.playbackRate = r; audio.defaultPlaybackRate = r; },
-  setVol(v)  { if (ytReady) yt.setVolume(v); audio.volume = v / 100; },
-};
-function isPlaying() { return cur?.type === 'yt' ? (ytReady && [1, 3].includes(yt.getPlayerState())) : (cur && !audio.paused); }
-function showMsg(t) { const m = $('#msg'); m.textContent = t; m.hidden = !t; }
-
-function showEmptyPlayer() {
-  $('#title').textContent = 'Belum ada lagu'; $('#srcBadge').textContent = '—'; $('#pos').textContent = '';
-  $('#media').className = 'media audio'; $('#yt').style.visibility = 'hidden'; $('#note').hidden = false;
-  $('#note').textContent = 'Tambahkan link di playlist untuk mulai'; render();
-}
-
-function playIndex(i, autoplay = true) {
-  if (i < 0 || i >= list.length) return;
-  if (idx >= 0 && idx !== i) history.push(idx);
-  idx = i; save();
-  const it = list[i]; cur = it; showMsg('');
-  A = B = null; updateAB();
-  $('#srcBadge').textContent = it.type === 'yt' ? 'YouTube' : 'Drive';
-  $('#title').textContent = it.title || 'Memuat…';
-  $('#nowNote').textContent = it.note || ''; $('#nowNote').hidden = !it.note;
-  fetchTitle(it);
-  const media = $('#media'), tok = ++loadTok;
-  if (it.type === 'yt') {
-    audio.pause(); audio.removeAttribute('src'); audio.load();
-    media.className = 'media';
-    $('#yt').style.visibility = 'visible'; $('#note').hidden = true;
-    loadYT(it, autoplay);
-  } else {
-    if (ytReady) { try { yt.stopVideo(); } catch {} }
-    media.className = 'media audio'; $('#yt').style.visibility = 'hidden'; $('#note').hidden = false;
-    const setSrc = (src, offline) => {
-      if (tok !== loadTok) return;
-      $('#note').textContent = offline ? '♪ Audio Google Drive · tersimpan offline' : '♪ Audio Google Drive';
-      audio.src = src;
-      audio.preservesPitch = true; audio.playbackRate = rate; audio.defaultPlaybackRate = rate;
-      audio.volume = +$('#vol').value / 100;
-      if (autoplay) audio.play().catch(() => {});
-    };
-    const net = driveKey(it.id), ready = blobURLs.get(it.id);
-    if (ready) setSrc(ready, true);
-    else if (cached.has(it.id)) cachedURL(it.id).then(u => { if (u) blobURLs.set(it.id, u); setSrc(u || net, !!u); });
-    else setSrc(net, false);
-  }
-  prepareAround();
-  renderQueue(); render(); updateMediaSession();
-  document.querySelector('#queue li.cur')?.scrollIntoView({ block: 'nearest' });
-}
-
-function loadYT(it, autoplay) {
-  if (!window.YT || !YT.Player) {
-    pendingYT = [it, autoplay];
-    if (!ytApi) { ytApi = document.createElement('script'); ytApi.src = 'https://www.youtube.com/iframe_api'; document.head.append(ytApi); }
-    window.onYouTubeIframeAPIReady = () => { const [a, b] = pendingYT; pendingYT = null; loadYT(a, b); };
-    return;
-  }
-  if (!yt) {
-    yt = new YT.Player('yt', { videoId: it.id, playerVars: { start: it.start || 0, rel: 0, playsinline: 1, autoplay: autoplay ? 1 : 0, disablekb: 1 },
-      events: {
-        onReady: () => { ytReady = true; P.setRate(rate); P.setVol(+$('#vol').value); if (autoplay) yt.playVideo(); },
-        onStateChange: e => { if (e.data === 0) onEnded(); if (e.data === 1) { P.setRate(rate); ytTitle(); } renderQueue(); },
-        onError: e => { markBad(({100: 'Video tidak ditemukan atau privat.', 101: 'Pemilik video tidak mengizinkan diputar di luar YouTube.',
-          150: 'Pemilik video tidak mengizinkan diputar di luar YouTube.', 153: 'YouTube menolak memutar video ini di sini.'})[e.data] || 'YouTube error ' + e.data); },
-      } });
-    return;
-  }
-  const opts = { videoId: it.id, startSeconds: it.start || 0 };
-  autoplay ? yt.loadVideoById(opts) : yt.cueVideoById(opts);
-}
-function ytTitle() { try { const t = yt.getVideoData().title; if (t && cur && !cur.title) { cur.title = t; save(); renderQueue(); $('#title').textContent = t; } } catch {} }
-
-function markBad(text) {
-  if (!cur) return;
-  cur.bad = true; save(); renderQueue();
-  showMsg(text + (autonext && list.length > 1 ? ' Lanjut ke lagu berikutnya…' : ''));
-  if (autonext && list.length > 1) setTimeout(() => nextTrack(true), 2500);
-}
-audio.onerror = () => { if (audio.getAttribute('src')) markBad('Audio Drive tidak bisa diputar. Pastikan file dibagikan "Siapa saja yang memiliki link" dan berupa audio.'); };
-audio.onplaying = () => { if (cur) { cur.bad = false; } renderQueue(); };
-audio.onpause = renderQueue;
-audio.onended = onEnded;
-
-function onEnded() {
-  if (repeat === 'one') { P.seek(0); P.play(); return; }
-  if (autonext) nextTrack(true);
-}
-function pickNext() {
-  if (!list.length) return -1;
-  if (shuffle && list.length > 1) { let j; do j = Math.floor(Math.random() * list.length); while (j === idx); return j; }
-  if (idx + 1 < list.length) return idx + 1;
-  return repeat === 'all' ? 0 : -1;
-}
-function nextTrack(auto = false) {
-  const j = pickNext();
-  if (j < 0) { if (auto) { stop(); showMsg('Playlist selesai.'); } else if (list.length) playIndex(0, true); return; }
-  playIndex(j, true);
-}
-function prevTrack() {
-  if (!list.length) return;
-  if (P.time() > 3) { P.seek(0); return; }            // like most players: first press restarts the song
-  const j = shuffle && history.length ? history.pop() : (idx > 0 ? idx - 1 : (repeat === 'all' ? list.length - 1 : 0));
-  const h = history.length; playIndex(j, true); if (shuffle) history.length = h;
-}
-function stop() { P.pause(); if (cur) P.seek(0); if (cur?.type === 'yt' && ytReady) yt.stopVideo(); A = B = null; updateAB(); renderQueue(); render(); }
-
-// ---------- controls ----------
-$('#play').onclick = () => isPlaying() ? P.pause() : P.play();
-$('#stop').onclick = stop;
-$('#next').onclick = () => nextTrack(false);
-$('#prev').onclick = prevTrack;
-document.querySelectorAll('[data-skip]').forEach(b => b.onclick = () => P.seek(P.time() + +b.dataset.skip));
-
-function paintModes() {
-  const r = $('#repeat'); r.textContent = { off: '🔁 Tanpa ulang', one: '🔂 Ulang 1 lagu', all: '🔁 Ulang semua' }[repeat]; r.classList.toggle('on', repeat !== 'off');
-  const s = $('#shuffle'); s.textContent = 'Acak: ' + (shuffle ? 'nyala' : 'mati'); s.classList.toggle('on', shuffle);
-  const a = $('#autonext'); a.textContent = 'Auto next: ' + (autonext ? 'nyala' : 'mati'); a.classList.toggle('on', autonext);
-  store.set('lp-repeat', repeat); store.set('lp-shuffle', shuffle); store.set('lp-autonext', autonext);
-}
-const cycleRepeat = () => { repeat = { off: 'one', one: 'all', all: 'off' }[repeat]; paintModes(); };
-$('#repeat').onclick = cycleRepeat;
-$('#shuffle').onclick = () => { shuffle = !shuffle; history = []; paintModes(); };
-$('#autonext').onclick = () => { autonext = !autonext; paintModes(); };
-
-function applyRate(r) { rate = Math.round(Math.min(2, Math.max(0.25, r)) * 100) / 100; P.setRate(rate); $('#rate').textContent = rate.toFixed(2) + '×'; store.set('lp-rate', rate); }
-$('#slower').onclick = () => applyRate(rate - 0.05);
-$('#faster').onclick = () => applyRate(rate + 0.05);
-document.querySelectorAll('[data-rate]').forEach(b => b.onclick = () => applyRate(+b.dataset.rate));
-$('#vol').value = store.get('lp-vol', 100);
-$('#vol').oninput = e => { P.setVol(+e.target.value); store.set('lp-vol', +e.target.value); };
-
-
-
-// A-B loop
-function updateAB() {
-  const z = $('#loopzone'), d = P.dur();
-  $('#abText').textContent = A == null && B == null ? 'Belum ada loop' : `A ${A != null ? fmt(A) : '—'}  →  B ${B != null ? fmt(B) : '—'}`;
-  $('#setA').classList.toggle('on', A != null); $('#setB').classList.toggle('on', B != null);
-  if (A != null && B != null && d) { z.style.display = 'block'; z.style.left = (A / d * 100) + '%'; z.style.width = ((B - A) / d * 100) + '%'; }
-  else z.style.display = 'none';
-}
-function setA() { if (!cur) return; A = P.time(); if (B != null && B <= A) B = null; updateAB(); }
-function setB() { if (!cur) return; const t = P.time(); if (A == null) A = 0; if (t > A) B = t; updateAB(); if (B != null) P.seek(A); }
-function clearAB() { A = B = null; updateAB(); }
-$('#setA').onclick = setA; $('#setB').onclick = setB; $('#clearAB').onclick = clearAB;
-
-// seek bar
-const bar = $('#bar'); let dragging = false;
-function seekFromEvent(e) { const r = bar.getBoundingClientRect(); const p = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)); P.seek(p * P.dur()); render(p); }
-bar.addEventListener('pointerdown', e => { if (!cur) return; dragging = true; bar.setPointerCapture(e.pointerId); seekFromEvent(e); });
-bar.addEventListener('pointermove', e => dragging && seekFromEvent(e));
-bar.addEventListener('pointerup', () => dragging = false);
-
-let lastPlaying = null;
-function render(pOverride) {
-  const t = P.time(), d = P.dur(), p = pOverride ?? (d ? t / d : 0);
-  $('#fill').style.width = (p * 100) + '%'; $('#knob').style.left = (p * 100) + '%';
-  $('#cur').textContent = fmt(pOverride != null ? pOverride * d : t); $('#dur').textContent = fmt(d);
-  const pl = !!isPlaying(); $('#play').textContent = pl ? 'Pause' : 'Play';
-  if (pl !== lastPlaying) { lastPlaying = pl; if (list.length) renderQueue(); updateMediaSession(); }
-}
-setInterval(() => {
-  if (!cur) return;
-  if (A != null && B != null && P.time() >= B) P.seek(A);
-  if (!dragging) render();
-}, 150);
-audio.onloadedmetadata = () => { updateAB(); render(); };
-
-// keyboard
-// Clicking the YouTube video moves keyboard focus into its iframe, where YouTube's own shortcuts
-// (10s arrow jumps) would take over. Hand focus straight back so Encore's shortcuts keep working.
-window.addEventListener('blur', () => setTimeout(() => {
-  if (document.activeElement?.tagName === 'IFRAME') { document.activeElement.blur(); window.focus(); }
-}, 0));
-document.addEventListener('keydown', e => {
-  if (e.target.matches('textarea, input[type=text], input[type=url]') || e.metaKey || e.ctrlKey || e.altKey) return;
-  const act = {
-    ' ': () => isPlaying() ? P.pause() : P.play(), 'k': () => isPlaying() ? P.pause() : P.play(),
-    'n': () => nextTrack(false), 'r': cycleRepeat, 'p': prevTrack, 's': stop,
-    'arrowleft': () => P.seek(P.time() - 5), 'arrowright': () => P.seek(P.time() + 5),
-    'j': () => P.seek(P.time() - 10), 'l': () => P.seek(P.time() + 10),
-    '[': () => applyRate(rate - 0.05), ']': () => applyRate(rate + 0.05),
-    'a': setA, 'b': setB, 'c': clearAB,
-  }[e.key.toLowerCase()];
-  if (act) { e.preventDefault(); act(); }
-});
-
-// ---------- offline copies of Drive audio ----------
-// Each Drive song is downloaded once into Cache Storage, then played from the phone: no data use on replay,
-// works offline, instant seeking. Songs are fetched one by one in playlist order, starting at the current one.
-const AUDIO_CACHE = 'encore-audio-v1';
-const hasCache = 'caches' in window;
-const driveKey = id => '/drive?id=' + encodeURIComponent(id);
-const cached = new Set(), failed = new Set(), progress = new Map(), blobURLs = new Map();
-let prefetching = false;
-
-function paintDl(el, id) {
-  if (!hasCache) return;
-  el.className = 'dl' + (cached.has(id) ? ' ok' : '');
-  el.textContent = cached.has(id) ? '✓' : progress.has(id) ? `${progress.get(id)}%` : '';
-  el.title = cached.has(id) ? 'Tersimpan di perangkat ini' : '';
-}
-const repaintDl = id => document.querySelectorAll(`[data-dl="${id}"]`).forEach(el => paintDl(el, id));
-
-async function loadCachedIds() {
-  if (!hasCache) return;
-  try { (await (await caches.open(AUDIO_CACHE)).keys()).forEach(r => { const id = new URL(r.url).searchParams.get('id'); if (id) cached.add(id); }); } catch {}
-}
-async function cachedURL(id) {
-  try { const r = await (await caches.open(AUDIO_CACHE)).match(driveKey(id)); if (r) return URL.createObjectURL(await r.blob()); } catch {}
-  return null;
-}
-async function cacheDrive(id) {
-  if (cached.has(id)) return true;
-  try {
-    const r = await fetch(driveKey(id));
-    const type = r.headers.get('content-type') || '';
-    if (!r.ok || !/^(audio|video)\/|octet-stream/.test(type)) return false;
-    const total = +r.headers.get('content-length') || 0, reader = r.body.getReader(), chunks = [];
-    let got = 0, shown = -1;
-    for (;;) {
-      const { done, value } = await reader.read(); if (done) break;
-      chunks.push(value); got += value.length;
-      const pct = total ? Math.floor(got / total * 100) : 0;
-      if (pct !== shown) { shown = pct; progress.set(id, pct); repaintDl(id); }
-    }
-    const blob = new Blob(chunks, { type });
-    await (await caches.open(AUDIO_CACHE)).put(driveKey(id), new Response(blob, { headers: { 'Content-Type': type, 'Content-Length': String(blob.size) } }));
-    cached.add(id); return true;
-  } catch { return false; }
-  finally { progress.delete(id); repaintDl(id); }
-}
-async function prefetchAll() {
-  if (!hasCache || prefetching || navigator.connection?.saveData) return;
-  prefetching = true;
-  try {
-    for (;;) {
-      const start = Math.max(idx, 0), order = [...list.slice(start), ...list.slice(0, start)];
-      const it = order.find(x => x.type === 'drive' && !cached.has(x.id) && !failed.has(x.id));
-      if (!it) break;
-      if (await cacheDrive(it.id)) prepareAround(); else failed.add(it.id);
-    }
-  } finally { prefetching = false; }
-}
-async function pruneCache() {
-  if (!hasCache) return;
-  const keep = new Set(list.filter(x => x.type === 'drive').map(x => x.id));
-  try {
-    const c = await caches.open(AUDIO_CACHE);
-    for (const r of await c.keys()) { const id = new URL(r.url).searchParams.get('id'); if (!keep.has(id)) { await c.delete(r); cached.delete(id); } }
-  } catch {}
-}
-// Keep ready-to-play copies of the current, next and previous songs so playback starts instantly,
-// even from the lock screen.
-async function prepareAround() {
-  if (!hasCache || idx < 0 || !list.length) return;
-  const n = list.length, want = new Set([idx, (idx + 1) % n, (idx - 1 + n) % n].map(i => list[i]).filter(x => x?.type === 'drive').map(x => x.id));
-  for (const [id, u] of blobURLs) if (!want.has(id) && audio.src !== u) { URL.revokeObjectURL(u); blobURLs.delete(id); }
-  for (const id of want) if (cached.has(id) && !blobURLs.has(id)) { const u = await cachedURL(id); if (u) blobURLs.set(id, u); }
-}
-
-// lock-screen & notification controls (phones, headphones)
-function updateMediaSession() {
-  if (!('mediaSession' in navigator) || !cur) return;
-  try {
-    navigator.mediaSession.metadata = new MediaMetadata({ title: cur.title || 'Encore Player', artist: cur.type === 'yt' ? 'YouTube' : 'Google Drive',
-      album: `Playlist · ${idx + 1}/${list.length}`, artwork: [{ src: '/icon-512.png', sizes: '512x512', type: 'image/png' }] });
-    navigator.mediaSession.playbackState = isPlaying() ? 'playing' : 'paused';
-  } catch {}
-}
-if ('mediaSession' in navigator) {
-  const h = { play: () => P.play(), pause: () => P.pause(), stop, nexttrack: () => nextTrack(false), previoustrack: prevTrack,
-    seekbackward: d => P.seek(P.time() - (d.seekOffset || 10)), seekforward: d => P.seek(P.time() + (d.seekOffset || 10)),
-    seekto: d => P.seek(d.seekTime) };
-  for (const [k, fn] of Object.entries(h)) { try { navigator.mediaSession.setActionHandler(k, fn); } catch {} }
-}
-
-// boot
-paintModes(); applyRate(rate); setName(store.get('lp-name', null)); renderQueue();
-list.forEach(fetchTitle);
-(async () => {
-  await loadCachedIds();
-  if (list.length) { idx = Math.min(Math.max(idx, 0), list.length - 1); await prepareAround(); playIndex(idx, false); } else showEmptyPlayer();
-  renderQueue(); pruneCache(); prefetchAll();
-  try { navigator.storage?.persist?.(); } catch {}
-})();
-if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('/sw.js').catch(() => {});
-</script>
+<script type="module" src="/app/main.js"></script>
 </body>
 </html>

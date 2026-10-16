@@ -1,0 +1,671 @@
+// playlist section (encore): youtube + google drive practice player with playlist, a-b loop, speed, offline drive audio
+
+import { $, $$, el, icon, setIcon, store, fmtTime, parseLink, toast, confirmDialog, showMenu, server, media, onKeys } from "./core.js";
+
+const audio = $("#audio");
+let list = store.get("lp-playlist", []); // [{url,type,id,start,title,note,bad}]
+let idx = store.get("lp-index", -1);
+let repeat = store.get("lp-repeat", "off"); // off | all | one
+let shuffle = store.get("lp-shuffle", false);
+let autonext = store.get("lp-autonext", true);
+let rate = store.get("lp-rate", 1);
+let cur = null;
+let yt = null, ytReady = false, ytApi = null, pendingYT = null;
+let A = null, B = null, history = [], loadTok = 0;
+
+function save() { store.set("lp-playlist", list); store.set("lp-index", idx); }
+
+// ------------------------------------------------------------------ chat / link parsing
+// reads pasted text (e.g. a whatsapp song list): every link becomes a song; the numbered line above it
+// ("1) Judul lagu") becomes its title, lines between that and the link become notes ("Chorus saja"),
+// and the lines before the first song become the playlist name.
+const URL_RE = /https?:\/\/[^\s<>"']+/g;
+const clean = (l) => l.replace(/[*_~`]+/g, "").replace(/\s+/g, " ").trim();
+
+export function extract(text) {
+  const ok = [], bad = [];
+  let block = [], name = null;
+  for (const raw of text.split(/\r?\n/)) {
+    const urls = raw.match(URL_RE);
+    if (!urls) { const l = clean(raw); if (l) block.push(l); continue; }
+    const before = clean(raw.slice(0, raw.indexOf(urls[0])));
+    if (before) block.push(before);
+    const numbered = block.findLastIndex((l) => /^\d{1,3}\s*[).:-]\s*\S/.test(l));
+    let title = null, note = null;
+    if (numbered >= 0) {
+      title = block[numbered].replace(/^\d{1,3}\s*[).:-]\s*/, "");
+      note = block.slice(numbered + 1).join(" · ") || null;
+    } else if (block.length === 1 && block[0].length <= 120) title = block[0];
+    if (title) title = title.replace(/[\s:\-–—>|]+$/, "") || null;
+    if (name === null && !ok.length && !bad.length) name = block.slice(0, numbered >= 0 ? numbered : block.length).join(" · ") || "";
+    for (const u of urls) {
+      const url = u.replace(/[)*_.,;!]+$/, "");
+      const p = parseLink(url);
+      p ? ok.push({ url, ...p, title: urls.length === 1 ? title : null, note: urls.length === 1 ? note : null }) : bad.push(url);
+    }
+    block = [];
+  }
+  return { ok, bad, name: name || null };
+}
+
+// ------------------------------------------------------------------ titles
+async function fetchTitle(item) {
+  if (item.title) return;
+  try {
+    const r = await fetch(`/title?type=${item.type}&id=${encodeURIComponent(item.id)}`);
+    if (!r.ok) return;
+    const j = await r.json();
+    if (!j.title) return;
+    item.title = j.title;
+    save(); renderQueue();
+    if (item === cur) { $("#title").textContent = j.title; updateMediaSession(); }
+  } catch {}
+}
+
+// ------------------------------------------------------------------ editor sheet with live preview
+const editor = $("#editor");
+function openEditor() {
+  $("#links").value = "";
+  renderPreview();
+  editor.showModal();
+  setTimeout(() => $("#links").focus(), 30);
+}
+$("#openEditor").onclick = openEditor;
+$$("[data-open-editor]").forEach((b) => (b.onclick = openEditor));
+$("#links").addEventListener("input", renderPreview);
+
+function renderPreview() {
+  const box = $("#preview");
+  const { ok, bad, name } = extract($("#links").value);
+  box.replaceChildren();
+  $("#add").disabled = $("#replace").disabled = !ok.length;
+  if (!ok.length && !bad.length) return;
+  box.append(el("div", "preview-head", `${ok.length} lagu terbaca${name ? ` · “${name}”` : ""}${bad.length ? ` · ${bad.length} link dilewati` : ""}`));
+  for (const it of ok) {
+    const row = el("div", "preview-item");
+    row.append(el("span", "chip", it.type === "yt" ? "YT" : "Drive"), el("span", "t", it.title || it.url));
+    if (it.note) row.append(el("span", "n", it.note));
+    box.append(row);
+  }
+  for (const u of bad) {
+    const row = el("div", "preview-item bad");
+    row.append(el("span", "t", `Bukan YouTube/Drive: ${u}`));
+    box.append(row);
+  }
+}
+
+$("#add").onclick = () => addLinks(false);
+$("#replace").onclick = async () => {
+  if (list.length && !(await confirmDialog("Ganti seluruh playlist?", `${list.length} lagu sekarang akan diganti dengan yang baru.`, { ok: "Ganti", danger: true }))) return;
+  addLinks(true);
+};
+
+function addLinks(replace) {
+  const text = $("#links").value;
+  const { ok, bad, name } = extract(text);
+  if (!ok.length) return;
+  if (replace) { stop(); list = []; idx = -1; cur = null; history = []; }
+  const wasEmpty = !list.length;
+  if (wasEmpty) setName(name);
+  list.push(...ok);
+  save(); renderQueue();
+  ok.forEach(fetchTitle);
+  editor.close();
+  const fromChat = ok.filter((x) => x.title).length;
+  toast(`${ok.length} lagu ditambahkan` + (fromChat ? ` · ${fromChat} judul dari chat` : "") + (bad.length ? ` · ${bad.length} link dilewati` : ""));
+  if (wasEmpty) playIndex(0, false);
+  pruneCache(); prefetchAll();
+}
+
+// add from another section (bass -> playlist)
+export function addToPlaylist(url, title) {
+  const p = parseLink(url);
+  if (!p) return false;
+  const exists = list.findIndex((x) => x.type === p.type && x.id === p.id);
+  if (exists >= 0) { toast("Lagu ini sudah ada di playlist", { action: "Putar", onAction: () => { location.hash = "#/"; playIndex(exists, true); } }); return true; }
+  const item = { url, ...p, title: title || null, note: null };
+  list.push(item);
+  save(); renderQueue(); fetchTitle(item);
+  toast("Ditambahkan ke Playlist", { action: "Putar", onAction: () => { location.hash = "#/"; playIndex(list.length - 1, true); } });
+  if (list.length === 1) playIndex(0, false);
+  prefetchAll();
+  return true;
+}
+
+function setName(n) {
+  store.set("lp-name", n);
+  $("#plName").textContent = n || "Playlist";
+}
+
+async function removeAt(i) {
+  const playing = i === idx;
+  list.splice(i, 1);
+  if (i < idx) idx--;
+  if (playing) {
+    if (list.length) playIndex(Math.min(idx, list.length - 1), isPlaying());
+    else { stop(); idx = -1; cur = null; showEmptyPlayer(); }
+  }
+  if (!list.length) setName(null);
+  save(); renderQueue(); pruneCache();
+}
+
+function moveItem(from, to) {
+  if (from === to || to < 0 || to >= list.length) return;
+  const [it] = list.splice(from, 1);
+  list.splice(to, 0, it);
+  if (idx === from) idx = to;
+  else if (from < idx && to >= idx) idx--;
+  else if (from > idx && to <= idx) idx++;
+  save(); renderQueue();
+}
+
+// ------------------------------------------------------------------ queue rendering + drag to reorder
+function renderQueue() {
+  const ol = $("#queue");
+  $("#qEmpty").hidden = list.length > 0;
+  ol.hidden = !list.length;
+  $("#offlineHint").hidden = !hasCache || !list.some((x) => x.type === "drive" && cached.has(x.id));
+  $("#count").textContent = list.length ? `${list.length} lagu` : "";
+  const playing = isPlaying();
+  const rows = list.map((it, i) => {
+    const li = el("li", "q-item" + (i === idx ? " cur" : "") + (it.bad ? " bad" : ""));
+    li.dataset.i = i;
+    li.title = it.url;
+    const grip = el("span", "q-grip");
+    grip.append(icon("grip"));
+    grip.title = "Geser untuk pindah urutan";
+    grip.addEventListener("pointerdown", (e) => startDrag(e, i, li));
+    const num = el("span", "q-num");
+    if (i === idx && playing) num.append(eqIcon()); else num.textContent = i + 1;
+    const body = el("div", "q-body");
+    body.append(el("span", "q-title", it.title || it.url));
+    const sub = el("span", "q-sub");
+    sub.append(el("span", null, it.type === "yt" ? "YouTube" : "Drive"));
+    if (it.type === "drive" && hasCache) { const d = el("span", "q-dl"); d.dataset.dl = it.id; paintDl(d, it.id); sub.append(d); }
+    if (it.note) sub.append(el("span", "q-note", it.note));
+    body.append(sub);
+    const acts = el("span", "q-acts");
+    if (canBreakdown(it)) {
+      const b = el("button", "icon-btn bass");
+      b.type = "button"; b.title = "Breakdown lagu ini"; b.append(icon("bass"));
+      b.onclick = (e) => { e.stopPropagation(); sendToBass(it); };
+      acts.append(b);
+    }
+    const more = el("button", "icon-btn");
+    more.type = "button"; more.title = "Lainnya"; more.append(icon("more"));
+    more.onclick = (e) => {
+      e.stopPropagation();
+      showMenu(more, [
+        { label: it.type === "yt" ? "Buka di YouTube" : "Buka di Google Drive", icon: "link", href: it.url },
+        i > 0 && { label: "Pindah ke atas", onClick: () => moveItem(i, i - 1) },
+        i < list.length - 1 && { label: "Pindah ke bawah", onClick: () => moveItem(i, i + 1) },
+        canBreakdown(it) && { label: "Breakdown lagu ini", icon: "bass", onClick: () => sendToBass(it) },
+        { label: "Hapus dari playlist", icon: "trash", danger: true, onClick: () => removeAt(i) },
+      ]);
+    };
+    acts.append(more);
+    li.append(grip, num, body, acts);
+    li.onclick = () => playIndex(i, true);
+    return li;
+  });
+  ol.replaceChildren(...rows);
+  $("#pos").textContent = idx >= 0 && list.length ? `${idx + 1} / ${list.length}` : "";
+  $("#prev").disabled = $("#next").disabled = !list.length;
+  $("#toBass").hidden = !(cur && canBreakdown(cur));
+}
+
+function eqIcon() {
+  const s = el("span", "nav-eq");
+  s.append(el("i"), el("i"), el("i"));
+  return s;
+}
+
+let drag = null;
+function startDrag(e, i, li) {
+  e.preventDefault();
+  e.stopPropagation();
+  drag = { from: i, to: i, li };
+  li.classList.add("dragging");
+  li.setPointerCapture(e.pointerId);
+  const move = (ev) => {
+    const target = document.elementFromPoint(ev.clientX, ev.clientY)?.closest(".q-item");
+    $$(".q-item").forEach((x) => x.classList.remove("drop-before", "drop-after"));
+    if (!target || target === li) { drag.to = drag.from; return; }
+    const j = +target.dataset.i;
+    const r = target.getBoundingClientRect();
+    const after = ev.clientY > r.top + r.height / 2;
+    target.classList.add(after ? "drop-after" : "drop-before");
+    let to = after ? j + 1 : j;
+    if (to > drag.from) to--;
+    drag.to = to;
+  };
+  const up = () => {
+    li.removeEventListener("pointermove", move);
+    li.removeEventListener("pointerup", up);
+    li.removeEventListener("pointercancel", up);
+    li.classList.remove("dragging");
+    $$(".q-item").forEach((x) => x.classList.remove("drop-before", "drop-after"));
+    const { from, to } = drag;
+    drag = null;
+    if (from !== to) moveItem(from, to);
+  };
+  li.addEventListener("pointermove", move);
+  li.addEventListener("pointerup", up);
+  li.addEventListener("pointercancel", up);
+}
+
+// a server without youtube can still take google drive songs
+const canBreakdown = (it) => server.bass && (server.youtube || it.type === "drive");
+
+// hand a song to the breakdown section (needs the encore server)
+let bassSend = null;
+export function onSendToBass(fn) { bassSend = fn; }
+function sendToBass(it) { bassSend?.(it.url, it.title); }
+$("#toBass").onclick = () => cur && sendToBass(cur);
+
+// ------------------------------------------------------------------ engine
+const P = {
+  play() {
+    if (!cur) { if (list.length) playIndex(Math.max(idx, 0), true); return; }
+    media.claim("playlist");
+    cur.type === "yt" ? ytReady && yt.playVideo() : audio.play().catch(() => {});
+  },
+  pause() { cur?.type === "yt" ? ytReady && yt.pauseVideo() : audio.pause(); },
+  time() { return cur?.type === "yt" ? (ytReady ? yt.getCurrentTime() || 0 : 0) : audio.currentTime; },
+  dur() { return cur?.type === "yt" ? (ytReady ? yt.getDuration() || 0 : 0) : isFinite(audio.duration) ? audio.duration : 0; },
+  seek(t) {
+    const d = P.dur();
+    t = Math.max(0, d ? Math.min(t, d - 0.05) : t);
+    cur?.type === "yt" ? ytReady && yt.seekTo(t, true) : (audio.currentTime = t);
+  },
+  setRate(r) { if (ytReady) yt.setPlaybackRate(r); audio.playbackRate = r; audio.defaultPlaybackRate = r; },
+  setVol(v) { if (ytReady) yt.setVolume(v); audio.volume = v / 100; },
+};
+export const pausePlaylist = () => P.pause();
+media.register("playlist", () => P.pause());
+
+function isPlaying() {
+  return cur?.type === "yt" ? ytReady && [1, 3].includes(yt.getPlayerState()) : cur && !audio.paused;
+}
+function showMsg(t) { const m = $("#msg"); m.textContent = t; m.hidden = !t; }
+
+function showEmptyPlayer() {
+  $("#title").textContent = "Belum ada lagu";
+  $("#srcBadge").textContent = "—";
+  $("#pos").textContent = "";
+  $("#media").className = "media is-audio";
+  $("#note").textContent = "Tambahkan lagu untuk mulai latihan";
+  $("#nowNote").hidden = true;
+  render();
+}
+
+export function playIndex(i, autoplay = true) {
+  if (i < 0 || i >= list.length) return;
+  if (idx >= 0 && idx !== i) history.push(idx);
+  idx = i; save();
+  const it = list[i];
+  cur = it;
+  showMsg("");
+  A = B = null; updateAB();
+  $("#srcBadge").textContent = it.type === "yt" ? "YouTube" : "Drive";
+  $("#title").textContent = it.title || "Memuat…";
+  $("#nowNote").textContent = it.note || "";
+  $("#nowNote").hidden = !it.note;
+  fetchTitle(it);
+  if (autoplay) media.claim("playlist");
+  const tok = ++loadTok;
+  if (it.type === "yt") {
+    audio.pause(); audio.removeAttribute("src"); audio.load();
+    $("#media").className = "media";
+    loadYT(it, autoplay);
+  } else {
+    if (ytReady) { try { yt.stopVideo(); } catch {} }
+    $("#media").className = "media is-audio";
+    const setSrc = (src, offline) => {
+      if (tok !== loadTok) return;
+      $("#note").textContent = offline ? "Audio Google Drive · tersimpan offline" : "Audio Google Drive";
+      audio.src = src;
+      audio.preservesPitch = true;
+      audio.playbackRate = rate; audio.defaultPlaybackRate = rate;
+      audio.volume = +$("#vol").value / 100;
+      if (autoplay) audio.play().catch(() => {});
+    };
+    const net = driveKey(it.id), ready = blobURLs.get(it.id);
+    if (ready) setSrc(ready, true);
+    else if (cached.has(it.id)) cachedURL(it.id).then((u) => { if (u) blobURLs.set(it.id, u); setSrc(u || net, !!u); });
+    else setSrc(net, false);
+  }
+  prepareAround();
+  renderQueue(); render(); updateMediaSession();
+  $("#queue .q-item.cur")?.scrollIntoView({ block: "nearest" });
+}
+
+function loadYT(it, autoplay) {
+  if (!window.YT || !YT.Player) {
+    pendingYT = [it, autoplay];
+    if (!ytApi) { ytApi = document.createElement("script"); ytApi.src = "https://www.youtube.com/iframe_api"; document.head.append(ytApi); }
+    window.onYouTubeIframeAPIReady = () => { const [a, b] = pendingYT; pendingYT = null; loadYT(a, b); };
+    return;
+  }
+  if (!yt) {
+    yt = new YT.Player("yt", {
+      videoId: it.id,
+      playerVars: { start: it.start || 0, rel: 0, playsinline: 1, autoplay: autoplay ? 1 : 0, disablekb: 1 },
+      events: {
+        onReady: () => { ytReady = true; P.setRate(rate); P.setVol(+$("#vol").value); if (autoplay) yt.playVideo(); },
+        onStateChange: (e) => {
+          if (e.data === 0) onEnded();
+          if (e.data === 1) { media.claim("playlist"); P.setRate(rate); ytTitle(); }
+          renderQueue();
+        },
+        onError: (e) => {
+          markBad({
+            100: "Video tidak ditemukan atau privat.",
+            101: "Pemilik video tidak mengizinkan diputar di luar YouTube.",
+            150: "Pemilik video tidak mengizinkan diputar di luar YouTube.",
+            153: "YouTube menolak memutar video ini di sini.",
+          }[e.data] || "YouTube error " + e.data);
+        },
+      },
+    });
+    return;
+  }
+  const opts = { videoId: it.id, startSeconds: it.start || 0 };
+  autoplay ? yt.loadVideoById(opts) : yt.cueVideoById(opts);
+}
+function ytTitle() {
+  try {
+    const t = yt.getVideoData().title;
+    if (t && cur && !cur.title) { cur.title = t; save(); renderQueue(); $("#title").textContent = t; }
+  } catch {}
+}
+
+function markBad(text) {
+  if (!cur) return;
+  cur.bad = true; save(); renderQueue();
+  showMsg(text + (autonext && list.length > 1 ? " Lanjut ke lagu berikutnya…" : ""));
+  if (autonext && list.length > 1) setTimeout(() => nextTrack(true), 2500);
+}
+audio.onerror = () => { if (audio.getAttribute("src")) markBad('Audio Drive tidak bisa diputar. Pastikan file dibagikan "Siapa saja yang memiliki link" dan berupa audio.'); };
+audio.onplaying = () => { if (cur) cur.bad = false; media.claim("playlist"); renderQueue(); };
+audio.onpause = renderQueue;
+audio.onended = onEnded;
+
+function onEnded() {
+  if (repeat === "one") { P.seek(0); P.play(); return; }
+  if (autonext) nextTrack(true);
+}
+function pickNext() {
+  if (!list.length) return -1;
+  if (shuffle && list.length > 1) { let j; do j = Math.floor(Math.random() * list.length); while (j === idx); return j; }
+  if (idx + 1 < list.length) return idx + 1;
+  return repeat === "all" ? 0 : -1;
+}
+function nextTrack(auto = false) {
+  const j = pickNext();
+  if (j < 0) { if (auto) { stop(); showMsg("Playlist selesai."); } else if (list.length) playIndex(0, true); return; }
+  playIndex(j, true);
+}
+function prevTrack() {
+  if (!list.length) return;
+  if (P.time() > 3) { P.seek(0); return; } // first press restarts the song
+  const j = shuffle && history.length ? history.pop() : idx > 0 ? idx - 1 : repeat === "all" ? list.length - 1 : 0;
+  const h = history.length;
+  playIndex(j, true);
+  if (shuffle) history.length = h;
+}
+function stop() {
+  P.pause();
+  if (cur) P.seek(0);
+  if (cur?.type === "yt" && ytReady) yt.stopVideo();
+  A = B = null; updateAB(); renderQueue(); render();
+}
+
+// ------------------------------------------------------------------ controls
+const togglePlay = () => (isPlaying() ? P.pause() : P.play());
+$("#play").onclick = togglePlay;
+$("#stop").onclick = stop;
+$("#next").onclick = () => nextTrack(false);
+$("#prev").onclick = prevTrack;
+$$("[data-skip]").forEach((b) => (b.onclick = () => P.seek(P.time() + +b.dataset.skip)));
+
+function paintModes() {
+  const r = $("#repeat");
+  r.classList.toggle("on", repeat !== "off");
+  r.title = { off: "Tanpa ulang", one: "Ulang 1 lagu", all: "Ulang semua" }[repeat] + " (R)";
+  $("#repeatOne").hidden = repeat !== "one";
+  $("#shuffle").classList.toggle("on", shuffle);
+  $("#shuffle").title = "Acak: " + (shuffle ? "nyala" : "mati");
+  $("#autonext").classList.toggle("on", autonext);
+  store.set("lp-repeat", repeat); store.set("lp-shuffle", shuffle); store.set("lp-autonext", autonext);
+}
+const cycleRepeat = () => {
+  repeat = { off: "one", one: "all", all: "off" }[repeat];
+  paintModes();
+  toast({ off: "Tanpa ulang", one: "Ulang 1 lagu", all: "Ulang semua" }[repeat], { ms: 1500 });
+};
+$("#repeat").onclick = cycleRepeat;
+$("#shuffle").onclick = () => { shuffle = !shuffle; history = []; paintModes(); };
+$("#autonext").onclick = () => { autonext = !autonext; paintModes(); };
+
+function applyRate(r) {
+  rate = Math.round(Math.min(2, Math.max(0.25, r)) * 100) / 100;
+  P.setRate(rate);
+  $("#rate").textContent = rate.toFixed(2) + "×";
+  $$("#ratePresets [data-rate]").forEach((b) => b.classList.toggle("active", +b.dataset.rate === rate));
+  store.set("lp-rate", rate);
+}
+$("#slower").onclick = () => applyRate(rate - 0.05);
+$("#faster").onclick = () => applyRate(rate + 0.05);
+$$("[data-rate]").forEach((b) => (b.onclick = () => applyRate(+b.dataset.rate)));
+$("#vol").value = store.get("lp-vol", 100);
+$("#volVal").textContent = $("#vol").value;
+$("#vol").oninput = (e) => { P.setVol(+e.target.value); $("#volVal").textContent = e.target.value; store.set("lp-vol", +e.target.value); };
+
+// ------------------------------------------------------------------ a-b loop (buttons + draggable handles on the seek bar)
+function updateAB() {
+  const z = $("#loopzone"), d = P.dur();
+  $("#abText").textContent = A == null && B == null ? "Belum ada" : `${A != null ? fmtTime(A) : "—"} → ${B != null ? fmtTime(B) : "—"}`;
+  $("#setA").classList.toggle("on", A != null);
+  $("#setB").classList.toggle("on", B != null);
+  if (A != null && B != null && d) {
+    z.style.display = "block";
+    z.style.left = (A / d) * 100 + "%";
+    z.style.width = ((B - A) / d) * 100 + "%";
+  } else z.style.display = "none";
+}
+function setA() { if (!cur) return; A = P.time(); if (B != null && B <= A) B = null; updateAB(); }
+function setB() { if (!cur) return; const t = P.time(); if (A == null) A = 0; if (t > A) B = t; updateAB(); if (B != null) P.seek(A); }
+function clearAB() { A = B = null; updateAB(); }
+$("#setA").onclick = setA;
+$("#setB").onclick = setB;
+$("#clearAB").onclick = clearAB;
+
+// ------------------------------------------------------------------ seek bar
+const bar = $("#bar");
+let dragging = false, abDrag = null;
+const posAt = (e) => { const r = bar.getBoundingClientRect(); return Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)); };
+function seekFromEvent(e) { const p = posAt(e); P.seek(p * P.dur()); render(p); }
+bar.addEventListener("pointerdown", (e) => {
+  if (!cur) return;
+  const h = e.target.closest(".ab-handle");
+  bar.setPointerCapture(e.pointerId);
+  if (h) { abDrag = h.dataset.h; return; }
+  dragging = true;
+  bar.classList.add("drag");
+  seekFromEvent(e);
+});
+bar.addEventListener("pointermove", (e) => {
+  const d = P.dur();
+  const tip = $("#seekTip");
+  if (d) { const p = posAt(e); tip.hidden = false; tip.style.left = p * 100 + "%"; tip.textContent = fmtTime(p * d); }
+  if (abDrag && d) {
+    const t = posAt(e) * d;
+    if (abDrag === "A") A = Math.min(t, B - 0.2);
+    else B = Math.max(t, A + 0.2);
+    updateAB();
+  } else if (dragging) seekFromEvent(e);
+});
+bar.addEventListener("pointerleave", () => { if (!dragging && !abDrag) $("#seekTip").hidden = true; });
+bar.addEventListener("pointerup", () => {
+  if (abDrag) P.seek(A);
+  dragging = false; abDrag = null;
+  bar.classList.remove("drag");
+  $("#seekTip").hidden = true;
+});
+bar.addEventListener("keydown", (e) => {
+  if (e.key === "ArrowLeft") { e.preventDefault(); e.stopPropagation(); P.seek(P.time() - 5); }
+  if (e.key === "ArrowRight") { e.preventDefault(); e.stopPropagation(); P.seek(P.time() + 5); }
+});
+
+let lastPlaying = null;
+function render(pOverride) {
+  const t = P.time(), d = P.dur(), p = pOverride ?? (d ? t / d : 0);
+  $("#fill").style.width = p * 100 + "%";
+  $("#knob").style.left = p * 100 + "%";
+  $("#cur").textContent = fmtTime(pOverride != null ? pOverride * d : t);
+  $("#dur").textContent = fmtTime(d);
+  const pl = !!isPlaying();
+  if (pl !== lastPlaying) {
+    lastPlaying = pl;
+    setIcon($("#play"), pl ? "pause" : "play");
+    $("#player").classList.toggle("playing", pl);
+    $("#navEq").hidden = !pl;
+    if (list.length) renderQueue();
+    updateMediaSession();
+  }
+}
+setInterval(() => {
+  if (!cur) return;
+  if (A != null && B != null && P.time() >= B) P.seek(A);
+  if (!dragging) render();
+}, 150);
+audio.onloadedmetadata = () => { updateAB(); render(); };
+
+// ------------------------------------------------------------------ keyboard
+// clicking the youtube video moves focus into its iframe, where youtube's own shortcuts would take over.
+// hand focus straight back so encore's shortcuts keep working.
+window.addEventListener("blur", () => setTimeout(() => {
+  if (document.activeElement?.tagName === "IFRAME") { document.activeElement.blur(); window.focus(); }
+}, 0));
+onKeys("playlist", (e) => {
+  const act = {
+    " ": togglePlay, k: togglePlay,
+    n: () => nextTrack(false), r: cycleRepeat, p: prevTrack, s: stop,
+    arrowleft: () => P.seek(P.time() - 5), arrowright: () => P.seek(P.time() + 5),
+    j: () => P.seek(P.time() - 10), l: () => P.seek(P.time() + 10),
+    "[": () => applyRate(rate - 0.05), "]": () => applyRate(rate + 0.05),
+    a: setA, b: setB, c: clearAB,
+  }[e.key.toLowerCase()];
+  if (act) { e.preventDefault(); act(); }
+});
+
+// ------------------------------------------------------------------ offline copies of drive audio
+// each drive song is downloaded once into cache storage, then played from the device: no data on replay,
+// works offline, instant seeking. songs are fetched one by one in playlist order, from the current one.
+const AUDIO_CACHE = "encore-audio-v1";
+const hasCache = "caches" in window;
+const driveKey = (id) => "/drive?id=" + encodeURIComponent(id);
+const cached = new Set(), failed = new Set(), progress = new Map(), blobURLs = new Map();
+let prefetching = false;
+
+function paintDl(e, id) {
+  e.className = "q-dl" + (cached.has(id) ? " ok" : "");
+  e.textContent = cached.has(id) ? "✓ offline" : progress.has(id) ? `${progress.get(id)}%` : "";
+}
+const repaintDl = (id) => $$(`[data-dl="${id}"]`).forEach((e) => paintDl(e, id));
+
+async function loadCachedIds() {
+  if (!hasCache) return;
+  try { (await (await caches.open(AUDIO_CACHE)).keys()).forEach((r) => { const id = new URL(r.url).searchParams.get("id"); if (id) cached.add(id); }); } catch {}
+}
+async function cachedURL(id) {
+  try { const r = await (await caches.open(AUDIO_CACHE)).match(driveKey(id)); if (r) return URL.createObjectURL(await r.blob()); } catch {}
+  return null;
+}
+async function cacheDrive(id) {
+  if (cached.has(id)) return true;
+  try {
+    const r = await fetch(driveKey(id));
+    const type = r.headers.get("content-type") || "";
+    if (!r.ok || !/^(audio|video)\/|octet-stream/.test(type)) return false;
+    const total = +r.headers.get("content-length") || 0, reader = r.body.getReader(), chunks = [];
+    let got = 0, shown = -1;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value); got += value.length;
+      const pct = total ? Math.floor((got / total) * 100) : 0;
+      if (pct !== shown) { shown = pct; progress.set(id, pct); repaintDl(id); }
+    }
+    const blob = new Blob(chunks, { type });
+    await (await caches.open(AUDIO_CACHE)).put(driveKey(id), new Response(blob, { headers: { "Content-Type": type, "Content-Length": String(blob.size) } }));
+    cached.add(id);
+    return true;
+  } catch { return false; }
+  finally { progress.delete(id); repaintDl(id); }
+}
+async function prefetchAll() {
+  if (!hasCache || prefetching || navigator.connection?.saveData) return;
+  prefetching = true;
+  try {
+    for (;;) {
+      const start = Math.max(idx, 0), order = [...list.slice(start), ...list.slice(0, start)];
+      const it = order.find((x) => x.type === "drive" && !cached.has(x.id) && !failed.has(x.id));
+      if (!it) break;
+      if (await cacheDrive(it.id)) { prepareAround(); renderQueue(); } else failed.add(it.id);
+    }
+  } finally { prefetching = false; }
+}
+async function pruneCache() {
+  if (!hasCache) return;
+  const keep = new Set(list.filter((x) => x.type === "drive").map((x) => x.id));
+  try {
+    const c = await caches.open(AUDIO_CACHE);
+    for (const r of await c.keys()) {
+      const id = new URL(r.url).searchParams.get("id");
+      if (!keep.has(id)) { await c.delete(r); cached.delete(id); }
+    }
+  } catch {}
+}
+// keep ready-to-play copies of the current, next and previous songs so playback starts instantly,
+// even from the lock screen.
+async function prepareAround() {
+  if (!hasCache || idx < 0 || !list.length) return;
+  const n = list.length;
+  const want = new Set([idx, (idx + 1) % n, (idx - 1 + n) % n].map((i) => list[i]).filter((x) => x?.type === "drive").map((x) => x.id));
+  for (const [id, u] of blobURLs) if (!want.has(id) && audio.src !== u) { URL.revokeObjectURL(u); blobURLs.delete(id); }
+  for (const id of want) if (cached.has(id) && !blobURLs.has(id)) { const u = await cachedURL(id); if (u) blobURLs.set(id, u); }
+}
+
+// ------------------------------------------------------------------ lock-screen & headphone controls
+function updateMediaSession() {
+  if (!("mediaSession" in navigator) || !cur) return;
+  try {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: cur.title || "Encore", artist: cur.type === "yt" ? "YouTube" : "Google Drive",
+      album: `Playlist · ${idx + 1}/${list.length}`, artwork: [{ src: "/icon-512.png", sizes: "512x512", type: "image/png" }],
+    });
+    navigator.mediaSession.playbackState = isPlaying() ? "playing" : "paused";
+  } catch {}
+}
+if ("mediaSession" in navigator) {
+  const h = {
+    play: () => P.play(), pause: () => P.pause(), stop, nexttrack: () => nextTrack(false), previoustrack: prevTrack,
+    seekbackward: (d) => P.seek(P.time() - (d.seekOffset || 10)), seekforward: (d) => P.seek(P.time() + (d.seekOffset || 10)),
+    seekto: (d) => P.seek(d.seekTime),
+  };
+  for (const [k, fn] of Object.entries(h)) { try { navigator.mediaSession.setActionHandler(k, fn); } catch {} }
+}
+
+// ------------------------------------------------------------------ boot
+export async function initPlaylist() {
+  paintModes(); applyRate(rate); setName(store.get("lp-name", null)); renderQueue();
+  list.forEach(fetchTitle);
+  await loadCachedIds();
+  if (list.length) { idx = Math.min(Math.max(idx, 0), list.length - 1); await prepareAround(); playIndex(idx, false); }
+  else showEmptyPlayer();
+  renderQueue(); pruneCache(); prefetchAll();
+  try { navigator.storage?.persist?.(); } catch {}
+  server.onChange(() => renderQueue());
+}

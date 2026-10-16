@@ -1,7 +1,8 @@
-// Keeps the app itself available offline (network first, cached copy as fallback).
-// Drive audio is cached separately by the page in 'encore-audio-v1'.
-const SHELL = 'encore-shell-v1';
-const FILES = ['/', '/manifest.webmanifest', '/icon-180.png', '/icon-192.png', '/icon-512.png'];
+// keeps the app itself available offline (network first, cached copy as fallback).
+// drive audio is cached separately by the page in 'encore-audio-v1'.
+const SHELL = 'encore-shell-v8';
+const FILES = ['/', '/app/styles.css', '/app/core.js', '/app/playlist.js', '/app/bass.js', '/app/main.js',
+  '/manifest.webmanifest', '/icon-180.png', '/icon-192.png', '/icon-512.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(SHELL).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));
