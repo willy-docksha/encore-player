@@ -91,11 +91,13 @@ code { font: .85em var(--f-mono); background: var(--surface-2); padding: 1px 5px
 .nav-item:hover { background: var(--surface-2); color: var(--ink); }
 .nav-item.active { background: var(--accent-soft); color: var(--accent); }
 .nav-item[data-nav="bass"].active { background: var(--bass-soft); color: var(--bass); }
-.nav-item > span:not(.nav-badge):not(.nav-eq) { flex: 1; }
+.nav-item > span:not(.nav-badge):not(.nav-eq):not(.nav-soon) { flex: 1; }
 .nav-badge {
   font: 600 .7rem var(--f-mono); min-width: 20px; height: 20px; padding: 0 6px; border-radius: 99px;
   display: grid; place-items: center; background: var(--bass); color: #fff;
 }
+.nav-soon { font: 600 .62rem var(--f-mono); text-transform: uppercase; letter-spacing: .04em; padding: 2px 6px; border-radius: 6px; background: var(--surface-2); color: var(--muted); }
+.server.off.soon .dot { background: var(--muted); }
 .nav-eq { display: inline-flex; align-items: flex-end; gap: 2px; height: 14px; }
 .nav-eq i { width: 3px; background: var(--accent); border-radius: 2px; animation: eq 1s ease-in-out infinite; }
 .nav-eq i:nth-child(2) { animation-delay: -.3s; }
@@ -473,6 +475,7 @@ kbd { font: .74rem var(--f-mono); border: 1px solid var(--line); border-bottom-w
   .nav-item { flex: 1; flex-direction: column; gap: 2px; padding: 6px; font-size: .72rem; justify-content: center; position: relative; }
   .nav-item > span:not(.nav-badge):not(.nav-eq) { flex: none; }
   .nav-badge { position: absolute; top: 4px; left: calc(50% + 8px); }
+  .nav-soon { position: absolute; top: 2px; left: calc(50% + 6px); font-size: .55rem; padding: 1px 4px; }
   .nav-eq { position: absolute; top: 8px; left: calc(50% + 12px); }
   .main { padding-bottom: calc(var(--tab-h) + 32px + env(safe-area-inset-bottom, 0px)); }
   /* phone order: player, then the song list, then practice tools */

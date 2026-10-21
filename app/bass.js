@@ -1499,6 +1499,12 @@ export function enterBassHome() {
   $("#jobForm").hidden = !server.analysis;
   $("#dropHint").hidden = !server.analysis;
   $("#bassOffline").hidden = server.bass || !server.checked;
+  if (!server.released) {
+    setIcon($("#offlineIcon").parentElement, "bass");
+    $("#offlineTitle").textContent = "Breakdown segera hadir";
+    $("#offlineText").textContent = "Fitur untuk memisahkan instrumen, melihat not, dan chord lagu masih disiapkan. Sementara itu, Playlist sudah bisa dipakai seperti biasa.";
+    $("#recheckServer").hidden = true;
+  }
   $("#bassOnline").hidden = !server.bass;
   if (server.bass) { renderQueue(); renderLibrary(); poll(); }
 }

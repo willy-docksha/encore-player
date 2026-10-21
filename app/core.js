@@ -1,5 +1,10 @@
 // shared helpers: dom, storage, api, toasts, dialogs, menus, routing, server status, media bus
 
+import { BREAKDOWN_RELEASED } from "./config.js";
+
+// breakdown is hidden on the public site until it is released; localhost keeps it for testing
+export const breakdownOn = BREAKDOWN_RELEASED || ["localhost", "127.0.0.1"].includes(location.hostname);
+
 export const $ = (s, root = document) => root.querySelector(s);
 export const $$ = (s, root = document) => [...root.querySelectorAll(s)];
 
@@ -172,10 +177,11 @@ export const server = {
   youtube: false, // youtube audio cannot be fetched from a browser
   analysis: false,
   mode: "offline",
+  released: breakdownOn,
   checked: false,
   listeners: new Set(),
   async check() {
-    const ok = typeof Worker !== "undefined" && typeof indexedDB !== "undefined" && typeof WebAssembly !== "undefined"
+    const ok = breakdownOn && typeof Worker !== "undefined" && typeof indexedDB !== "undefined" && typeof WebAssembly !== "undefined"
       && typeof OfflineAudioContext !== "undefined";
     this.bass = ok;
     this.analysis = ok;
@@ -185,9 +191,11 @@ export const server = {
     const s = $("#serverStatus");
     s.classList.toggle("on", ok);
     s.classList.toggle("off", !ok);
-    s.querySelector(".server-text").textContent = ok
-      ? ("gpu" in navigator ? "Breakdown jalan di browser ini (GPU)" : "Breakdown jalan di browser ini")
+    s.querySelector(".server-text").textContent = !breakdownOn ? "Breakdown segera hadir"
+      : ok ? ("gpu" in navigator ? "Breakdown jalan di browser ini (GPU)" : "Breakdown jalan di browser ini")
       : "Browser ini tidak mendukung Breakdown";
+    s.classList.toggle("soon", !breakdownOn);
+    $("#navSoon").hidden = breakdownOn;
     this.listeners.forEach((fn) => fn(this.bass));
     return this.bass;
   },

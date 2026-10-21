@@ -71,6 +71,7 @@
     <a class="nav-item" href="#/breakdown" data-nav="bass" title="Breakdown">
       <svg><use href="#i-bass"/></svg><span>Breakdown</span>
       <span class="nav-badge" id="navBadge" hidden></span>
+      <span class="nav-soon" id="navSoon" hidden>Segera</span>
     </a>
     <div class="nav-foot">
       <button class="nav-item ghost" type="button" id="navFold" title="Lipat menu" aria-expanded="true"><svg><use href="#i-sidebar"/></svg><span>Lipat menu</span></button>
@@ -195,10 +196,10 @@
       </header>
 
       <div class="offline-card card" id="bassOffline" hidden>
-        <div class="empty-art"><svg><use href="#i-mac"/></svg></div>
+        <div class="empty-art"><svg id="offlineIcon"><use href="#i-mac"/></svg></div>
         <div>
-          <h3>Browser ini belum mendukung Breakdown</h3>
-          <p>Breakdown memisahkan instrumen dan membaca not memakai AI yang berjalan langsung di perangkatmu. Buka Encore di Chrome, Edge, atau Safari versi terbaru di laptop atau PC. Playlist tetap bisa dipakai di sini.</p>
+          <h3 id="offlineTitle">Browser ini belum mendukung Breakdown</h3>
+          <p id="offlineText">Breakdown memisahkan instrumen dan membaca not memakai AI yang berjalan langsung di perangkatmu. Buka Encore di Chrome, Edge, atau Safari versi terbaru di laptop atau PC. Playlist tetap bisa dipakai di sini.</p>
           <button class="btn" type="button" id="recheckServer"><svg><use href="#i-refresh"/></svg>Cek lagi</button>
         </div>
       </div>

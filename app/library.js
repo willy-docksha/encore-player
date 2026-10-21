@@ -2,7 +2,7 @@
 // worker on this device. api() answers the same /api/jobs routes the python server had, so the ui
 // talks to it the same way.
 
-import { parseLink } from "./core.js";
+import { parseLink, breakdownOn } from "./core.js";
 import { MODEL_URL, AUTO_START } from "./config.js";
 import { PIPELINE_VERSION } from "./analysis/version.js";
 
@@ -390,4 +390,4 @@ addEventListener("beforeunload", (e) => {
 });
 
 // resume whatever was waiting when the page was closed
-if (supported) load().then(pump);
+if (supported && breakdownOn) load().then(pump);
