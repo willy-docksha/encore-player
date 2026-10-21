@@ -3,6 +3,7 @@
 import { $, router, server, store } from "./core.js";
 import { initPlaylist, onSendToBass } from "./playlist.js";
 import { initBass, enterBassHome, enterSong, leaveSong, submitLink } from "./bass.js";
+import { startTour, maybeStartTour } from "./tour.js";
 
 router.add(/^#\/?$/, "playlist", () => { leaveSong(); document.title = "Encore"; });
 router.add(/^#\/breakdown\/?$/, "bass", () => enterBassHome());
@@ -13,6 +14,7 @@ router.add(/^#\/(?:ngulik|bass\/song|song)\/(\w+)$/, "song", (id) => router.go(`
 
 onSendToBass((url, title) => submitLink(url, title));
 $("#shortcutsBtn").onclick = () => $("#shortcuts").showModal();
+$("#tourBtn").onclick = () => startTour();
 
 // fold the sidebar down to icons (desktop), remembered per device
 function setFolded(on) {
@@ -31,6 +33,6 @@ $("#navFold").onclick = () => setFolded(!document.querySelector(".shell").classL
 initBass();
 initPlaylist();
 // the bass pages depend on the local server, so learn whether it is there before routing
-server.check().then(() => router.resolve());
+server.check().then(() => { router.resolve(); maybeStartTour(); });
 
 if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("/sw.js").catch(() => {});

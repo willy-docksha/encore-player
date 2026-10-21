@@ -122,6 +122,32 @@ code { font: .85em var(--f-mono); background: var(--surface-2); padding: 1px 5px
   .nav-folded .server { justify-content: center; padding: 10px; }
 }
 
+/* overlay tutorial */
+.tour { position: fixed; inset: 0; z-index: 100; }
+.tour-spot {
+  position: fixed; border-radius: 14px; pointer-events: none;
+  box-shadow: 0 0 0 9999px rgba(8, 10, 14, .62), 0 0 0 2px var(--accent);
+  transition: top .3s ease, left .3s ease, width .3s ease, height .3s ease;
+}
+.tour-spot.none { top: 50% !important; left: 50% !important; width: 0 !important; height: 0 !important; box-shadow: 0 0 0 9999px rgba(8, 10, 14, .62); }
+.tour-tip {
+  position: fixed; padding: 16px 18px 14px; border-radius: 16px; background: var(--surface); color: var(--ink);
+  box-shadow: var(--shadow-lg); border: 1px solid var(--line);
+  opacity: 0; transform: translateY(6px); transition: opacity .2s ease, transform .2s ease, top .3s ease, left .3s ease;
+}
+.tour-tip.in { opacity: 1; transform: none; }
+.tour-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.tour-count { font: 600 .72rem var(--f-mono); color: var(--accent); }
+.tour-skip { border: 0; background: none; color: var(--muted); font-size: .8rem; cursor: pointer; padding: 2px 4px; }
+.tour-skip:hover { color: var(--ink); }
+.tour-title { font-size: 1.05rem; margin: 0 0 6px; }
+.tour-text { margin: 0 0 14px; font-size: .9rem; line-height: 1.55; color: var(--ink-2); }
+.tour-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.tour-dots { display: flex; gap: 5px; flex-wrap: wrap; }
+.tour-dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--line); }
+.tour-dots i.on { background: var(--accent); width: 16px; border-radius: 3px; }
+.tour-nav { display: flex; gap: 6px; flex: none; }
+
 .main { min-width: 0; padding: calc(28px + env(safe-area-inset-top, 0px)) clamp(16px, 3vw, 40px) 48px; }
 .view { max-width: 1240px; margin: 0 auto; animation: fade-in .25s ease; }
 @keyframes fade-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }

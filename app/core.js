@@ -241,7 +241,7 @@ const keyHandlers = new Map();
 export function onKeys(view, fn) { keyHandlers.set(view, fn); }
 document.addEventListener("keydown", (e) => {
   if (e.metaKey || e.ctrlKey || e.altKey) return;
-  if (document.querySelector("dialog[open]")) return;
+  if (document.querySelector("dialog[open]") || document.body.classList.contains("touring")) return;
   const t = e.target;
   if (t.matches?.("textarea, input:not([type=range]), select")) return;
   keyHandlers.get(router.current)?.(e);
