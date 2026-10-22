@@ -42,6 +42,10 @@ def running_app(port: int) -> bool:
 
 def port_free(port: int) -> bool:
     with socket.socket() as s:
+        # like uvicorn: a port the last run just closed is still free (posix keeps it in time_wait for a while).
+        # staying on 8765 matters: the playlist is saved per address, and the online site syncs with 8765
+        if sys.platform != "win32":
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         try:
             s.bind(("127.0.0.1", port))
             return True

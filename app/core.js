@@ -23,9 +23,29 @@ export function setIcon(button, name) {
   button.querySelector("use")?.setAttribute("href", `#i-${name}`);
 }
 
+// settings shared between the online site and the encore app (sync.js); the rest stays per page
+export const SYNC_KEYS = ["lp-playlist", "lp-index", "lp-name", "lp-repeat", "lp-shuffle", "lp-autonext", "lp-rate",
+  "bass-mixer", "bass-part", "bd-mode", "nav-folded", "tour-done"];
+
 export const store = {
   get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } },
-  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+  set(k, v) {
+    try {
+      const json = JSON.stringify(v);
+      if (localStorage.getItem(k) === json) return; // unchanged: nothing to sync
+      localStorage.setItem(k, json);
+      if (SYNC_KEYS.includes(k)) {
+        // when it changed, so the newest write wins across pages. writes while the page boots are
+        // just defaults being saved, they must not beat what the other page saved
+        const times = JSON.parse(localStorage.getItem("sync-times") || "{}");
+        times[k] = store.booting ? times[k] || 1 : Date.now();
+        localStorage.setItem("sync-times", JSON.stringify(times));
+        store.onSync?.();
+      }
+    } catch {}
+  },
+  onSync: null,
+  booting: true, // main.js clears it once the page is ready
 };
 
 export const fmtTime = (t) => {

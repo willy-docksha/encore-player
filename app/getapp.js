@@ -1,7 +1,8 @@
 // web version of breakdown: point visitors to the encore app build for their computer
 
-import { $, el } from "./core.js";
+import { $, el, toast, store } from "./core.js";
 import { APP_RELEASES, APP_FILES } from "./config.js";
+import { connect, isConnected } from "./sync.js";
 
 const fileUrl = (os) => `${APP_RELEASES}/download/${APP_FILES[os].file}`;
 
@@ -24,6 +25,7 @@ const OPEN_TIP = {
 };
 
 export function renderGetApp() {
+  renderSync();
   const os = guessOs();
   const main = $("#getMain");
   const others = Object.keys(APP_FILES).filter((k) => k !== os);
@@ -52,4 +54,26 @@ export function renderGetApp() {
   all.rel = "noopener noreferrer";
   out.push(" · ", all);
   $("#getOther").replaceChildren(...out);
+}
+
+// online site: share the playlist with the encore app in this browser (sync.js)
+function renderSync() {
+  const line = $("#syncLine");
+  line.hidden = location.origin !== "https://encore-player.vercel.app";
+  if (line.hidden) return;
+  if (isConnected()) {
+    line.replaceChildren("✓ Playlist di sini tersinkron dengan Encore App di komputer ini.");
+    return;
+  }
+  const b = el("button", "link-btn", store.get("sync-app", false) ? "Sambungkan lagi" : "Sambungkan playlist");
+  b.type = "button";
+  b.onclick = async () => {
+    b.disabled = true;
+    b.textContent = "Menyambungkan…";
+    const ok = await connect();
+    toast(ok ? "Tersambung! Playlist di sini dan di Encore App sekarang sama."
+      : "Encore App belum terdeteksi. Pastikan app-nya jalan, lalu klik Izinkan kalau browser bertanya soal jaringan lokal.", { error: !ok, ms: 8000 });
+    renderSync();
+  };
+  line.replaceChildren("Sudah pasang Encore App? ", b, " supaya playlist di sini dan di app selalu sama (di browser ini).");
 }

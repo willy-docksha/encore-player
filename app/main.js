@@ -32,6 +32,8 @@ $("#navFold").onclick = () => setFolded(!document.querySelector(".shell").classL
 
 initBass();
 initPlaylist();
+// its first, synchronous part only saved the defaults; from here on saved changes count as the newest (sync.js)
+store.booting = false;
 // the bass pages depend on the local server, so learn whether it is there before routing
 server.check().then(() => { router.resolve(); maybeStartTour(); });
 

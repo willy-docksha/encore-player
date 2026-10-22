@@ -29,6 +29,7 @@ from pathlib import Path
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi import Request
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 import ai
@@ -82,6 +83,12 @@ async def no_cache_frontend(request, call_next):
         response.headers["Cache-Control"] = "no-cache"
     return response
 
+
+# the online site may reach this app to share its playlist (sync below); chrome asks the user once
+# for "local network" access, which needs the private network header on the preflight
+ONLINE = "https://encore-player.vercel.app"
+app.add_middleware(CORSMiddleware, allow_origins=[ONLINE], allow_methods=["GET", "POST"],
+                   allow_headers=["content-type"], allow_private_network=True)
 
 download_pool = ThreadPoolExecutor(max_workers=2)
 analysis_pool = ThreadPoolExecutor(max_workers=1)  # demucs is heavy, one song at a time
@@ -464,6 +471,41 @@ def health():
     # the web app looks for this route to know it runs inside the encore app
     return {"ok": True, "app": True, "frozen": FROZEN, "platform": sys.platform, "version": PIPELINE_VERSION,
             "ai": ai.status()}
+
+
+# ---------------------------------------------------------------- sync (online site <-> this app)
+# the online site and this app's own page live at different addresses, so the browser keeps their
+# saved settings apart. both sync them here: {key: {"v": value, "t": ms}}, the newest write wins.
+
+SYNC = data_dir() / "sync.json"
+sync_lock = threading.Lock()
+
+
+@app.get("/api/sync")
+def get_sync():
+    with sync_lock:
+        return json.loads(SYNC.read_text()) if SYNC.exists() else {}
+
+
+@app.post("/api/sync")
+async def post_sync(request: Request):
+    incoming = await request.json()
+    if not isinstance(incoming, dict):
+        raise HTTPException(400, "format sync tidak valid")
+    with sync_lock:
+        stored = json.loads(SYNC.read_text()) if SYNC.exists() else {}
+        changed = False
+        for k, item in incoming.items():
+            if not (isinstance(k, str) and isinstance(item, dict) and isinstance(item.get("t"), (int, float))):
+                continue
+            if item["t"] > (stored.get(k) or {}).get("t", 0):
+                stored[k] = {"v": item.get("v"), "t": item["t"]}
+                changed = True
+        if changed:
+            tmp = SYNC.with_suffix(".tmp")
+            tmp.write_text(json.dumps(stored))
+            os.replace(tmp, SYNC)
+        return stored
 
 
 @app.post("/api/ai/install")

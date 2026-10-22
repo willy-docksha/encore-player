@@ -1,6 +1,8 @@
 // playlist section (encore): youtube + google drive practice player with playlist, a-b loop, speed, offline drive audio
 
 import { $, $$, el, icon, setIcon, store, fmtTime, parseLink, toast, confirmDialog, showMenu, server, media, onKeys } from "./core.js";
+// waits for the first sync, so the state below already includes what the other page saved
+import { onRemote } from "./sync.js";
 
 const audio = $("#audio");
 let list = store.get("lp-playlist", []); // [{url,type,id,start,title,note,bad}]
@@ -728,6 +730,27 @@ if ("mediaSession" in navigator) {
   };
   for (const [k, fn] of Object.entries(h)) { try { navigator.mediaSession.setActionHandler(k, fn); } catch {} }
 }
+
+// the online site or the app changed the playlist: take it over, the song that is playing keeps playing
+onRemote((keys) => {
+  if (!keys.some((k) => k.startsWith("lp-"))) return;
+  const playing = cur && `${cur.type}:${cur.id}`;
+  list = store.get("lp-playlist", []);
+  repeat = store.get("lp-repeat", "off");
+  shuffle = store.get("lp-shuffle", false);
+  autonext = store.get("lp-autonext", true);
+  paintModes();
+  setName(store.get("lp-name", null));
+  const same = list.findIndex((x) => `${x.type}:${x.id}` === playing);
+  if (same >= 0) idx = same;
+  else {
+    idx = Math.min(Math.max(store.get("lp-index", 0), 0), list.length - 1);
+    if (!list.length) showEmptyPlayer();
+    else if (!isPlaying()) playIndex(idx, false);
+  }
+  list.forEach(fetchTitle);
+  renderQueue();
+});
 
 // ------------------------------------------------------------------ boot
 export async function initPlaylist() {

@@ -15,6 +15,7 @@ Sekali lagi, sampai hafal. Encore punya dua bagian:
 - Kecepatan 0.25×–2×, loop A–B (penanda A/B bisa digeser di progress bar)
 - Bisa dipasang di layar HP (Add to Home Screen), dengan kontrol di layar kunci untuk audio Drive
 - Audio Drive otomatis disimpan di perangkat: hemat kuota saat diputar ulang dan bisa offline
+- Playlist versi online dan Encore App bisa disamakan (di browser yang sama): klik **Sambungkan playlist** di halaman Breakdown versi online. App di komputer menyimpan salinan bersama (`/api/sync`), perubahan terbaru yang menang. Chrome/Edge meminta izin akses jaringan lokal sekali; Safari belum dites
 - Di Encore App: tombol **Breakdown** di setiap lagu
 
 File Google Drive harus dibagikan sebagai **"Siapa saja yang memiliki link"**.
