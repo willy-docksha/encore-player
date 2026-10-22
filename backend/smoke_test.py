@@ -50,43 +50,58 @@ def clip(path: Path) -> None:
     sf.write(path, np.stack([y, y], 1) / np.abs(y).max() * 0.8, sr)
 
 
+def report(msg: str, log: Path) -> int:
+    """github annotation with the app's last log lines (job logs need a login, annotations don't)."""
+    tail = log.read_text(errors="replace").splitlines()[-40:] if log.exists() else []
+    text = "\n".join([msg, *tail]).replace("%", "%25").replace("\r", "").replace("\n", "%0A")
+    print(f"::error title=smoke test::{text}")
+    return 1
+
+
 def main() -> int:
     exe = sys.argv[1]
     tmp = Path(tempfile.mkdtemp())
     env = {**os.environ, "PORT": str(PORT), "ENCORE_DATA": str(tmp / "data"), "BROWSER": "true"}
-    proc = subprocess.Popen([exe], env=env)
+    log = tmp / "app.log"
+    proc = subprocess.Popen([exe], env=env, stdout=log.open("w"), stderr=subprocess.STDOUT)
     try:
-        for _ in range(180):
-            try:
-                print("health:", get("/api/health"))
-                break
-            except Exception:
-                time.sleep(1)
-        else:
-            print("app did not start")
-            return 1
-        clip(tmp / "smoke.wav")
-        job = upload(tmp / "smoke.wav")
-        last = None
-        for _ in range(1800):
-            m = get(f"/api/jobs/{job['id']}")
-            if (m["status"], m.get("stage")) != last:
-                last = (m["status"], m.get("stage"))
-                print(*last)
-            if m["status"] in ("done", "error"):
-                break
-            time.sleep(1)
-        if m["status"] != "done":
-            print("analysis failed:", m.get("error"))
-            return 1
-        a = get(f"/api/jobs/{job['id']}/analysis")
-        print("result:", a["key"], a["bpm"], "bpm,", len(a["notes"]), "bass notes,", sorted(a["audio"]))
-        assert set(a["audio"]) >= {"drums", "bass", "vocals", "other"}, a["audio"]
-        with urllib.request.urlopen(f"{BASE}/api/jobs/{job['id']}/files/bass.mp3", timeout=10) as r:
-            assert len(r.read()) > 10000
-        return 0
+        return run(log)
+    except Exception as e:
+        return report(f"{type(e).__name__}: {e}", log)
     finally:
         proc.kill()
+        print(log.read_text(errors="replace"))
+
+
+def run(log: Path) -> int:
+    tmp = log.parent
+    for _ in range(180):
+        try:
+            print("health:", get("/api/health"))
+            break
+        except Exception:
+            time.sleep(1)
+    else:
+        return report("app did not start", log)
+    clip(tmp / "smoke.wav")
+    job = upload(tmp / "smoke.wav")
+    last = None
+    for _ in range(1800):
+        m = get(f"/api/jobs/{job['id']}")
+        if (m["status"], m.get("stage")) != last:
+            last = (m["status"], m.get("stage"))
+            print(*last)
+        if m["status"] in ("done", "error"):
+            break
+        time.sleep(1)
+    if m["status"] != "done":
+        return report(f"analysis failed at '{m.get('stage')}': {m.get('error')}", log)
+    a = get(f"/api/jobs/{job['id']}/analysis")
+    print("result:", a["key"], a["bpm"], "bpm,", len(a["notes"]), "bass notes,", sorted(a["audio"]))
+    assert set(a["audio"]) >= {"drums", "bass", "vocals", "other"}, a["audio"]
+    with urllib.request.urlopen(f"{BASE}/api/jobs/{job['id']}/files/bass.mp3", timeout=10) as r:
+        assert len(r.read()) > 10000
+    return 0
 
 
 if __name__ == "__main__":
