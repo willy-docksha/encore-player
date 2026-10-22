@@ -1,13 +1,8 @@
-// breakdown is still being built: false shows "segera hadir" on the public site.
-// localhost always has it, so it can keep being tested during development.
-export const BREAKDOWN_RELEASED = false;
-
-// false = new breakdown songs wait in the queue until "Mulai" is pressed.
-// set to true once analysis runs on a fast server and can start right away.
-export const AUTO_START = false;
-
-// where the ai models are downloaded from (see README "Model AI").
-// the models (~240 mb) are too big for vercel's free plan, so the public site loads them from a
-// separate host such as a hugging face repo: "https://huggingface.co/<user>/<repo>/resolve/main/".
-// empty = the models/ folder next to the app (local dev, or a host that allows big files).
-export const MODEL_URL = "https://huggingface.co/willydocksha/encore-models/resolve/main/";
+// where the encore app builds are downloaded from (github releases, see .github/workflows/release.yml).
+// breakdown only runs inside the app; the web version shows this download page instead.
+export const APP_RELEASES = "https://github.com/willy-docksha/encore-player/releases/latest";
+export const APP_FILES = {
+  mac: { file: "Encore-macOS.dmg", label: "macOS", need: "Mac dengan chip Apple (M1 ke atas), macOS 12+" },
+  windows: { file: "Encore-Windows.zip", label: "Windows", need: "Windows 10/11, 64-bit, RAM 8 GB+" },
+  linux: { file: "Encore-Linux.tar.gz", label: "Linux", need: "Ubuntu 22.04+ atau sejenisnya, 64-bit, RAM 8 GB+" },
+};

@@ -1,0 +1,19 @@
+# encore app (backend/main.py). basic-pitch is installed separately with --no-deps:
+# it pins tensorflow on macos, but encore only uses its onnx model.
+demucs
+torch
+torchaudio
+soundfile
+librosa
+fastapi
+uvicorn
+python-multipart
+yt-dlp[default]
+imageio-ffmpeg
+pyobjc-framework-Cocoa; sys_platform == "darwin"  # dock icon of the mac app
+beat-this @ https://github.com/CPJKU/beat_this/archive/main.zip
+onnxruntime
+pretty_midi
+mir_eval
+resampy
+setuptools<81  # resampy needs pkg_resources

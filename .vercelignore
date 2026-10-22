@@ -1,7 +1,10 @@
 start.command
 dev.mjs
-tools
+backend
+.github
 models
 data
+build
+dist
 .venv
 *.log

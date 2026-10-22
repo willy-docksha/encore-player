@@ -1,7 +1,7 @@
 // keeps the app itself available offline (network first, cached copy as fallback).
-// drive audio is cached separately by the page in 'encore-audio-v1', ai models in 'encore-models-v1'.
-const SHELL = 'encore-shell-v11';
-const FILES = ['/', '/app/styles.css', '/app/core.js', '/app/playlist.js', '/app/bass.js', '/app/library.js', '/app/main.js',
+// drive audio is cached separately by the page in 'encore-audio-v1', the encore app serves breakdown itself.
+const SHELL = 'encore-shell-v12';
+const FILES = ['/', '/app/styles.css', '/app/core.js', '/app/playlist.js', '/app/bass.js', '/app/getapp.js', '/app/config.js', '/app/tour.js', '/app/main.js',
   '/manifest.webmanifest', '/icon-180.png', '/icon-192.png', '/icon-512.png'];
 
 self.addEventListener('install', e => {
@@ -9,7 +9,8 @@ self.addEventListener('install', e => {
 });
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys()
-    .then(keys => Promise.all(keys.filter(k => k.startsWith('encore-shell-') && k !== SHELL).map(k => caches.delete(k))))
+    // also frees the ai models the old in-browser breakdown cached (~240 mb)
+    .then(keys => Promise.all(keys.filter(k => (k.startsWith('encore-shell-') && k !== SHELL) || k.startsWith('encore-models-')).map(k => caches.delete(k))))
     .then(() => self.clients.claim()));
 });
 self.addEventListener('fetch', e => {

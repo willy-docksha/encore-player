@@ -1,7 +1,0 @@
-# only for tools/export_models.py (re-exporting the ai models to onnx); the app itself needs no python
-demucs
-torchaudio
-onnx
-onnxscript
-beat-this @ https://github.com/CPJKU/beat_this/archive/main.zip
-setuptools<81

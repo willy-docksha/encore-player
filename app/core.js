@@ -1,10 +1,5 @@
 // shared helpers: dom, storage, api, toasts, dialogs, menus, routing, server status, media bus
 
-import { BREAKDOWN_RELEASED } from "./config.js";
-
-// breakdown is hidden on the public site until it is released; localhost keeps it for testing
-export const breakdownOn = BREAKDOWN_RELEASED || ["localhost", "127.0.0.1"].includes(location.hostname);
-
 export const $ = (s, root = document) => root.querySelector(s);
 export const $$ = (s, root = document) => [...root.querySelectorAll(s)];
 
@@ -170,32 +165,35 @@ window.addEventListener("resize", closeMenu);
 document.addEventListener("scroll", closeMenu, true);
 
 // ------------------------------------------------------------------ breakdown availability
-// breakdown runs in this browser (see library.js); the old server flags stay for the ui code
+// breakdown runs in the encore app (python server on this computer, see backend/). the web version
+// has no /api/health, so there it shows the download page instead.
 
 export const server = {
   bass: false,
-  youtube: false, // youtube audio cannot be fetched from a browser
+  youtube: false,
   analysis: false,
-  mode: "offline",
-  released: breakdownOn,
+  mode: "web", // "app" inside the encore app
   checked: false,
   listeners: new Set(),
   async check() {
-    const ok = breakdownOn && typeof Worker !== "undefined" && typeof indexedDB !== "undefined" && typeof WebAssembly !== "undefined"
-      && typeof OfflineAudioContext !== "undefined";
+    let ok = false;
+    try {
+      const r = await fetch("/api/health", { cache: "no-store", signal: AbortSignal.timeout(3000) });
+      ok = r.ok && !!(await r.json()).app;
+    } catch { /* web version, or the app was closed */ }
     this.bass = ok;
     this.analysis = ok;
-    this.youtube = false;
-    this.mode = ok ? "browser" : "offline";
+    this.youtube = ok; // the app downloads youtube audio itself
+    this.mode = ok ? "app" : "web";
     this.checked = true;
     const s = $("#serverStatus");
     s.classList.toggle("on", ok);
     s.classList.toggle("off", !ok);
-    s.querySelector(".server-text").textContent = !breakdownOn ? "Breakdown segera hadir"
-      : ok ? ("gpu" in navigator ? "Breakdown jalan di browser ini (GPU)" : "Breakdown jalan di browser ini")
-      : "Browser ini tidak mendukung Breakdown";
-    s.classList.toggle("soon", !breakdownOn);
-    $("#navSoon").hidden = breakdownOn;
+    s.classList.toggle("soon", !ok);
+    s.querySelector(".server-text").textContent = ok ? "Encore App tersambung" : "Breakdown ada di Encore App";
+    $("#navSoon").hidden = ok;
+    $("#quitApp").hidden = !ok;
+    document.body.classList.toggle("in-app", ok);
     this.listeners.forEach((fn) => fn(this.bass));
     return this.bass;
   },

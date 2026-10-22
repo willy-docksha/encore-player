@@ -268,7 +268,8 @@ function renderQueue() {
   ol.replaceChildren(...rows);
   $("#pos").textContent = idx >= 0 && list.length ? `${idx + 1} / ${list.length}` : "";
   $("#prev").disabled = $("#next").disabled = !list.length;
-  $("#toBass").hidden = !(cur && canBreakdown(cur));
+  // on the web this button points to the encore app download
+  $("#toBass").hidden = !(cur && (server.bass ? canBreakdown(cur) : server.checked));
 }
 
 function eqIcon() {

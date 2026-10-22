@@ -1,7 +1,7 @@
-// bass section (delve): separate the stems, transcribe notes, detect chords. runs in this browser (library.js).
+// bass section (delve): separate the stems, transcribe notes, detect chords. runs in the encore app (backend/).
 
-import { $, $$, el, icon, setIcon, store, fmtTime, fmtDate, fmtAgo, parseLink, toast, confirmDialog, showMenu, server, media, router, onKeys } from "./core.js";
-import { api, fileUrl } from "./library.js";
+import { $, $$, el, icon, setIcon, store, fmtTime, fmtDate, fmtAgo, parseLink, toast, confirmDialog, showMenu, server, media, router, onKeys, api } from "./core.js";
+import { renderGetApp } from "./getapp.js";
 import { addToPlaylist } from "./playlist.js";
 
 const SHARP = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
@@ -85,13 +85,19 @@ window.addEventListener("drop", (e) => {
   if (f) uploadFile(f);
 });
 
-// create a job for a link; the library returns the existing one for a known file
+// stem / midi file of a finished song, served by the app
+const fileUrl = (id, name) => `/api/jobs/${id}/files/${encodeURIComponent(name)}`;
+
+// create a job for a link; the app returns the existing one for a known file
 export async function submitLink(url, title) {
-  if (!server.bass) { toast("Browser ini tidak mendukung Breakdown. Pakai Chrome, Edge, atau Safari terbaru.", { error: true }); return false; }
+  if (!server.bass) {
+    toast("Breakdown jalan di Encore App, gratis untuk Mac, Windows, dan Linux.", { action: "Download", onAction: () => router.go("#/breakdown") });
+    return false;
+  }
   const p = parseLink(url);
   if (!p) return false;
   if (p.type === "yt" && !server.youtube) {
-    toast("Link YouTube tidak bisa dianalisis langsung di browser. Upload file audionya atau pakai link Google Drive.", { error: true, ms: 7000 });
+    toast("Link YouTube belum bisa diproses. Upload file audionya atau pakai link Google Drive.", { error: true, ms: 7000 });
     return false;
   }
   const fd = new FormData();
@@ -1492,19 +1498,14 @@ export function enterBassHome() {
   player.stop();
   openId = null;
   document.title = "Breakdown · Encore";
-  // the browser only takes uploads and google drive links
-  $("#urlInput").placeholder = "Tempel link Google Drive…";
-  $("#dropHint").textContent = "atau tarik file audio ke sini · dianalisis di perangkat ini, biarkan tab tetap terbuka"
-    + " · pertama kali mengunduh model AI ±240 MB (sekali saja)";
+  $("#urlInput").placeholder = "Tempel link YouTube atau Google Drive…";
+  $("#dropHint").textContent = "atau tarik file audio ke sini · diproses di komputer ini"
+    + " · pertama kali mengunduh model AI ±500 MB (sekali saja)";
   $("#jobForm").hidden = !server.analysis;
   $("#dropHint").hidden = !server.analysis;
-  $("#bassOffline").hidden = server.bass || !server.checked;
-  if (!server.released) {
-    setIcon($("#offlineIcon").parentElement, "bass");
-    $("#offlineTitle").textContent = "Breakdown segera hadir";
-    $("#offlineText").textContent = "Fitur untuk memisahkan instrumen, melihat not, dan chord lagu masih disiapkan. Sementara itu, Playlist sudah bisa dipakai seperti biasa.";
-    $("#recheckServer").hidden = true;
-  }
+  // web version: show where to get the app
+  $("#bassGetApp").hidden = server.bass || !server.checked;
+  if (!server.bass && server.checked) renderGetApp();
   $("#bassOnline").hidden = !server.bass;
   if (server.bass) { renderQueue(); renderLibrary(); poll(); }
 }
@@ -1566,9 +1567,8 @@ export async function enterSong(id) {
     acts.push(exp, midi);
     if (server.analysis) acts.push(more);  // view-only server: nothing left in this menu
     $("#songActions").replaceChildren(...acts);
-    // stems are blobs in this browser: resolve their object urls before the player needs them
     const audioMap = data.audio || { bass: "bass.mp3", rest: "rest.mp3" };
-    data.audioUrls = Object.fromEntries(await Promise.all(Object.entries(audioMap).map(async ([n, f]) => [n, await fileUrl(id, f)])));
+    data.audioUrls = Object.fromEntries(Object.entries(audioMap).map(([n, f]) => [n, fileUrl(id, f)]));
     if (openId !== id) return;
     player.load(id, data);
   } catch (ex) {
@@ -1582,7 +1582,7 @@ export function leaveSong() { player.stop(); openId = null; }
 async function downloadMidi(id, name, title, label) {
   try {
     const a = el("a");
-    a.href = await fileUrl(id, `${name}.mid`);
+    a.href = fileUrl(id, `${name}.mid`);
     a.download = `${(title || label).replace(/[^\w\-. ]+/g, "_").trim().slice(0, 80) || "lagu"} - ${label.toLowerCase()}.mid`;
     document.body.append(a);
     a.click();
@@ -1593,7 +1593,16 @@ async function downloadMidi(id, name, title, label) {
 }
 
 export function initBass() {
-  $("#recheckServer").onclick = async () => { await server.check(); enterBassHome(); };
+  $("#recheckServer").onclick = async () => {
+    await server.check();
+    enterBassHome();
+    if (!server.bass) toast("Encore App belum terdeteksi di halaman ini. Kalau app-nya sudah jalan, buka localhost:8765.");
+  };
+  $("#quitApp").onclick = async () => {
+    if (!(await confirmDialog("Tutup Encore App?", "Lagu yang sedang diproses akan dilanjutkan saat Encore dibuka lagi.", { ok: "Tutup" }))) return;
+    try { await fetch("/api/quit", { method: "POST" }); } catch { /* already gone */ }
+    document.body.replaceChildren(el("p", "app-closed", "Encore App sudah ditutup. Tab ini boleh ditutup juga."));
+  };
   server.onChange((on) => {
     if (router.current === "bass") enterBassHome();
     if (on) poll();

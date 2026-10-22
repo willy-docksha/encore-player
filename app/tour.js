@@ -52,9 +52,9 @@ const steps = () => [
   {
     target: '.nav-item[data-nav="bass"]',
     title: "8. Breakdown",
-    text: server.released
+    text: server.bass
       ? "Pisahkan vokal, drum, bass, dan instrumen lain, lalu lihat not dan chord-nya. Hasilnya bisa diekspor tanpa instrumen tertentu."
-      : "Segera hadir: memisahkan vokal, drum, bass, dan instrumen lain, lengkap dengan not dan chord-nya.",
+      : "Pisahkan vokal, drum, bass, dan instrumen lain, lengkap dengan not dan chord-nya. Jalan di Encore App (gratis) untuk Mac, Windows, dan Linux.",
   },
   {
     target: "#shortcutsBtn",

@@ -1,4 +1,5 @@
-// local dev server: static files plus the vercel functions in api/ (same routes as vercel.json)
+// web version dev server: static files plus the vercel functions in api/ (same routes as vercel.json).
+// breakdown shows the download page here; the encore app itself runs with backend/main.py.
 // usage: node dev.mjs [port]
 import http from "node:http";
 import fs from "node:fs";
@@ -11,7 +12,6 @@ const PORT = Number(process.argv[2] || process.env.PORT || 8765);
 const TYPES = {
   ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".mjs": "text/javascript", ".css": "text/css",
   ".json": "application/json", ".png": "image/png", ".svg": "image/svg+xml", ".webmanifest": "application/manifest+json",
-  ".onnx": "application/octet-stream", ".f16": "application/octet-stream", ".wasm": "application/wasm",
 };
 const FUNCTIONS = { "/drive": "api/drive.js", "/title": "api/title.js" };
 
@@ -30,7 +30,7 @@ http.createServer(async (req, res) => {
     if (fs.existsSync(file) && fs.statSync(file).isDirectory()) file = path.join(file, "index.html");
     // only the web app is served, never the tooling around it
     const rel = path.relative(ROOT, file);
-    const allowed = /^(index\.html|sw\.js|manifest\.webmanifest|icon-\d+\.png|app\/.+|models\/.+)$/.test(rel);
+    const allowed = /^(index\.html|sw\.js|manifest\.webmanifest|icon-\d+\.png|app\/.+)$/.test(rel);
     if (!allowed || !fs.existsSync(file)) { res.writeHead(404).end("not found"); return; }
     const { size } = fs.statSync(file);
     res.writeHead(200, { "content-type": TYPES[path.extname(file)] || "application/octet-stream", "content-length": size, "cache-control": "no-cache" });

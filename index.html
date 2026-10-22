@@ -72,7 +72,7 @@
     <a class="nav-item" href="#/breakdown" data-nav="bass" title="Breakdown">
       <svg><use href="#i-bass"/></svg><span>Breakdown</span>
       <span class="nav-badge" id="navBadge" hidden></span>
-      <span class="nav-soon" id="navSoon" hidden>Segera</span>
+      <span class="nav-soon" id="navSoon" hidden>App</span>
     </a>
     <div class="nav-foot">
       <button class="nav-item ghost" type="button" id="tourBtn" title="Cara pakai Encore"><svg><use href="#i-help"/></svg><span>Cara pakai</span></button>
@@ -81,6 +81,7 @@
       <div class="server" id="serverStatus" title="Status Breakdown">
         <span class="dot"></span><span class="server-text">Memeriksa…</span>
       </div>
+      <button class="nav-item ghost" type="button" id="quitApp" title="Hentikan Encore App di komputer ini" hidden><svg><use href="#i-x"/></svg><span>Tutup Encore App</span></button>
     </div>
   </nav>
 
@@ -197,13 +198,47 @@
         </div>
       </header>
 
-      <div class="offline-card card" id="bassOffline" hidden>
-        <div class="empty-art"><svg id="offlineIcon"><use href="#i-mac"/></svg></div>
-        <div>
-          <h3 id="offlineTitle">Browser ini belum mendukung Breakdown</h3>
-          <p id="offlineText">Breakdown memisahkan instrumen dan membaca not memakai AI yang berjalan langsung di perangkatmu. Buka Encore di Chrome, Edge, atau Safari versi terbaru di laptop atau PC. Playlist tetap bisa dipakai di sini.</p>
-          <button class="btn" type="button" id="recheckServer"><svg><use href="#i-refresh"/></svg>Cek lagi</button>
+      <!-- web version: breakdown lives in the encore app -->
+      <div class="get-app" id="bassGetApp" hidden>
+        <div class="card get-hero">
+          <div class="get-copy">
+            <span class="get-tag"><svg><use href="#i-mac"/></svg>Encore App · gratis</span>
+            <h2>Bongkar lagu sampai ke not-notnya, langsung di komputermu.</h2>
+            <p>Breakdown memakai AI berat: 6 instrumen dipisah satu per satu, lalu tiap not dan chord dibaca. Server web nggak kuat menanggungnya, tapi laptopmu kuat. Pasang <b>Encore App</b>, buka, lalu tempel link lagu. Selesai.</p>
+            <div class="get-main">
+              <a class="btn primary lg" id="getMain" href="#"><svg><use href="#i-download"/></svg><span>Download</span></a>
+              <span class="get-need" id="getNeed"></span>
+            </div>
+            <p class="get-other" id="getOther"></p>
+          </div>
+          <div class="get-visual" aria-hidden="true">
+            <div class="gv-song"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+            <div class="gv-arrow"><svg><use href="#i-down"/></svg></div>
+            <div class="gv-stems">
+              <div style="--c:#e0892b"><span>Drum</span><b></b></div>
+              <div style="--c:#0e9fb3"><span>Bass</span><b></b></div>
+              <div style="--c:#d0457e"><span>Vokal</span><b></b></div>
+              <div style="--c:#7a5af5"><span>Gitar</span><b></b></div>
+              <div style="--c:#2f9e62"><span>Piano</span><b></b></div>
+              <div style="--c:#6b7380"><span>Lainnya</span><b></b></div>
+            </div>
+          </div>
         </div>
+
+        <ol class="get-steps">
+          <li class="card"><span class="get-num">1</span><div><h3>Download</h3><p>Pilih sesuai komputermu. Sekali download, pakai selamanya.</p></div></li>
+          <li class="card"><span class="get-num">2</span><div><h3>Buka Encore</h3><p id="getOpenTip">Encore terbuka sendiri di browser. Biarkan jendelanya jalan selama dipakai.</p></div></li>
+          <li class="card"><span class="get-num">3</span><div><h3>Tempel link</h3><p>YouTube, Google Drive, atau file audio. Tunggu beberapa menit, lalu latihan per instrumen.</p></div></li>
+        </ol>
+
+        <div class="get-perks">
+          <span><svg><use href="#i-sliders"/></svg>Mixer 6 instrumen: mute, solo, export</span>
+          <span><svg><use href="#i-music"/></svg>Not bass, vokal, piano, gitar + tab</span>
+          <span><svg><use href="#i-bass"/></svg>Chord, tempo, kunci lagu &amp; MIDI</span>
+          <span><svg><use href="#i-check"/></svg>Lagu tersimpan di komputermu, nggak diupload ke mana-mana</span>
+        </div>
+
+        <p class="get-foot">Playlist tetap bisa dipakai di sini seperti biasa. Encore App sudah jalan? Buka <a href="http://localhost:8765/#/breakdown">localhost:8765</a> atau <button class="link-btn" type="button" id="recheckServer">cek lagi</button>.</p>
       </div>
 
       <div id="bassOnline">
@@ -223,7 +258,7 @@
 
         <section class="block" id="queueSection" hidden>
           <div class="block-head"><h3>Antrian</h3><button class="btn sm" type="button" id="startAll" hidden><svg><use href="#i-play"/></svg>Mulai semua</button></div>
-          <p class="busy-warn" id="busyWarn" hidden><strong>Jangan refresh atau tutup tab ini.</strong> Proses berjalan di browser, kalau halaman di-refresh atau ditutup, lagu yang sedang diproses mulai lagi dari 0%.</p>
+          <p class="busy-warn" id="busyWarn" hidden><strong>Biarkan Encore App tetap jalan.</strong> Lagu diproses di komputer ini. Tab ini boleh ditutup atau di-refresh, tapi kalau Encore App ditutup, lagu yang sedang diproses mulai lagi dari awal saat app dibuka lagi.</p>
           <ul class="jobs" id="queueList"></ul>
         </section>
 

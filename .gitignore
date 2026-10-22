@@ -5,5 +5,8 @@ __pycache__/
 .venv/
 data/
 *.log
-# ai models are exported by tools/export_models.py and hosted separately (see README)
+# encore app builds (pyinstaller)
+build/
+dist/
+# leftover onnx models of the old in-browser breakdown
 models/

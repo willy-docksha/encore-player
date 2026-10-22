@@ -378,10 +378,52 @@ kbd { font: .74rem var(--f-mono); border: 1px solid var(--line); border-bottom-w
 .toast.error { background: var(--danger); color: #fff; }
 
 /* ------------------------------------------------------------------ bass home */
-.offline-card { display: flex; gap: 18px; padding: 22px; align-items: flex-start; }
-.offline-card h3 { font-size: 1.05rem; margin-bottom: 6px; }
-.offline-card p { margin: 0 0 14px; color: var(--ink-2); line-height: 1.6; }
-.offline-card .empty-art { background: var(--bass-soft); color: var(--bass); }
+/* web version: get the encore app */
+.get-app { display: flex; flex-direction: column; gap: 16px; }
+.get-hero {
+  display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 28px; padding: 32px; overflow: hidden; position: relative;
+  background: radial-gradient(120% 140% at 100% 0%, var(--bass-soft), transparent 60%), var(--surface);
+}
+.get-tag { display: inline-flex; align-items: center; gap: 6px; font: 600 .72rem var(--f-mono); text-transform: uppercase; letter-spacing: .06em; color: var(--bass); background: var(--bass-soft); padding: 5px 10px; border-radius: 99px; }
+.get-tag svg { width: 14px; height: 14px; }
+.get-hero h2 { font: 700 clamp(1.5rem, 2.6vw, 2.1rem)/1.15 var(--f-display); letter-spacing: -.01em; margin: 14px 0 10px; }
+.get-hero p { margin: 0; color: var(--ink-2); line-height: 1.65; max-width: 56ch; }
+.get-main { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-top: 22px; }
+.btn.lg { min-height: 50px; padding: 12px 22px; font-size: 1rem; border-radius: 12px; }
+.get-need { font-size: .82rem; color: var(--muted); }
+.get-hero .get-other { margin-top: 14px; font-size: .88rem; color: var(--muted); }
+.get-other a, .get-foot a, .link-btn { color: var(--bass); font-weight: 600; text-decoration: none; }
+.get-other a:hover, .get-foot a:hover, .link-btn:hover { text-decoration: underline; }
+.link-btn { background: none; border: 0; padding: 0; font: inherit; font-weight: 600; cursor: pointer; }
+/* song -> six stems, a hint of what breakdown does */
+.get-visual { display: flex; flex-direction: column; justify-content: center; gap: 10px; padding: 18px; border-radius: var(--radius); background: var(--surface-2); border: 1px solid var(--line); }
+.gv-song { display: flex; align-items: center; gap: 4px; height: 44px; padding: 0 12px; border-radius: 10px; background: var(--surface); }
+.gv-song i { flex: 1; border-radius: 3px; background: var(--ink-2); opacity: .55; animation: gv 1.6s ease-in-out infinite; }
+.gv-song i:nth-child(3n) { animation-delay: -.4s; } .gv-song i:nth-child(3n+1) { animation-delay: -.9s; } .gv-song i:nth-child(4n) { animation-delay: -1.2s; }
+.gv-arrow { display: grid; place-items: center; color: var(--muted); }
+.gv-arrow svg { width: 18px; height: 18px; animation: gv-bob 1.6s ease-in-out infinite; }
+.gv-stems { display: grid; gap: 6px; }
+.gv-stems div { display: grid; grid-template-columns: 58px 1fr; align-items: center; gap: 10px; font: 500 .74rem var(--f-mono); color: var(--muted); }
+.gv-stems b { height: 10px; border-radius: 6px; background: linear-gradient(90deg, var(--c) 0 40%, color-mix(in srgb, var(--c) 25%, transparent) 40% 55%, var(--c) 55% 85%, color-mix(in srgb, var(--c) 25%, transparent) 85%); background-size: 200% 100%; animation: gv-flow 6s linear infinite; }
+.gv-stems div:nth-child(2n) b { animation-duration: 8s; } .gv-stems div:nth-child(3n) b { animation-duration: 5s; }
+@keyframes gv { 0%, 100% { height: 30%; } 50% { height: 90%; } }
+@keyframes gv-bob { 0%, 100% { transform: translateY(-2px); } 50% { transform: translateY(3px); } }
+@keyframes gv-flow { to { background-position: -200% 0; } }
+.get-steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.get-steps li { display: flex; gap: 14px; padding: 18px; align-items: flex-start; }
+.get-steps h3 { font-size: 1rem; margin: 2px 0 4px; }
+.get-steps p { margin: 0; font-size: .88rem; color: var(--ink-2); line-height: 1.55; }
+.get-num { flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font: 700 .9rem var(--f-display); background: var(--bass); color: #fff; }
+.get-perks { display: flex; flex-wrap: wrap; gap: 8px; }
+.get-perks span { display: inline-flex; align-items: center; gap: 8px; font-size: .84rem; color: var(--ink-2); background: var(--surface); border: 1px solid var(--line); padding: 7px 12px; border-radius: 99px; }
+.get-perks svg { width: 16px; height: 16px; color: var(--bass); }
+.get-foot { margin: 4px 4px 0; font-size: .84rem; color: var(--muted); }
+.app-closed { margin: 30vh auto 0; text-align: center; color: var(--muted); font-size: 1.05rem; padding: 0 16px; }
+@media (max-width: 900px) {
+  .get-hero { grid-template-columns: minmax(0, 1fr); padding: 22px; }
+  .get-visual { display: none; }
+  .get-steps { grid-template-columns: minmax(0, 1fr); }
+}
 .add-bar { display: flex; gap: 10px; padding: 10px; align-items: center; }
 .add-input { flex: 1; display: flex; align-items: center; gap: 10px; padding: 0 12px; min-height: 44px; border-radius: 10px; background: var(--surface-2); border: 1px solid transparent; transition: border-color .15s, box-shadow .15s; min-width: 0; }
 .add-input:focus-within { border-color: var(--bass); box-shadow: 0 0 0 3px var(--bass-soft); }
@@ -497,7 +539,7 @@ kbd { font: .74rem var(--f-mono); border: 1px solid var(--line); border-bottom-w
   }
   .brand, .nav-foot .server { display: none; }
   .nav-foot { margin: 0; display: contents; }
-  #shortcutsBtn, #navFold { display: none; }
+  #shortcutsBtn, #navFold, #quitApp { display: none !important; }
   .nav-item { flex: 1; flex-direction: column; gap: 2px; padding: 6px; font-size: .72rem; justify-content: center; position: relative; }
   .nav-item > span:not(.nav-badge):not(.nav-eq) { flex: none; }
   .nav-badge { position: absolute; top: 4px; left: calc(50% + 8px); }

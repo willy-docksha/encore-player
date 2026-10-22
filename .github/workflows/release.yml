@@ -1,0 +1,101 @@
+# builds the encore app for mac, windows and linux and publishes them as a github release.
+# run it by pushing a tag: git tag app-v1.0.1 && git push origin app-v1.0.1
+# the web version links to releases/latest, so a new release reaches the download page by itself.
+name: Encore App
+
+on:
+  push:
+    tags: ["app-v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            asset: Encore-macOS.dmg
+            exe: dist/Encore.app/Contents/MacOS/Encore
+          - os: windows-latest
+            asset: Encore-Windows.zip
+            exe: dist/Encore/Encore.exe
+          - os: ubuntu-22.04
+            asset: Encore-Linux.tar.gz
+            exe: dist/Encore/Encore
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+
+      - name: Install
+        shell: bash
+        run: |
+          uv venv --python 3.12 .venv
+          PY=.venv/bin/python
+          if [ "$RUNNER_OS" = Windows ]; then PY=.venv/Scripts/python.exe; fi
+          # linux: cpu-only torch (the default wheel bundles cuda, several gb)
+          if [ "$RUNNER_OS" = Linux ]; then
+            uv pip install --python $PY torch torchaudio --index-url https://download.pytorch.org/whl/cpu
+          fi
+          uv pip install --python $PY -r backend/requirements.txt pyinstaller pillow
+          uv pip install --python $PY --no-deps basic-pitch
+          echo "PY=$PY" >> "$GITHUB_ENV"
+
+      - name: Build
+        shell: bash
+        run: $PY -m PyInstaller --noconfirm backend/encore.spec
+
+      - name: Smoke test (analyse a short clip with the built app)
+        shell: bash
+        run: $PY backend/smoke_test.py "${{ matrix.exe }}"
+
+      - name: Package
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = macOS ]; then
+            mkdir dmg && cp -R dist/Encore.app dmg/ && ln -s /Applications dmg/Applications
+            hdiutil create -volname Encore -srcfolder dmg -ov -format UDZO "${{ matrix.asset }}"
+          elif [ "$RUNNER_OS" = Windows ]; then
+            7z a -tzip "${{ matrix.asset }}" ./dist/Encore
+          else
+            tar -czf "${{ matrix.asset }}" -C dist Encore
+          fi
+          ls -la "${{ matrix.asset }}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset }}
+          path: ${{ matrix.asset }}
+          compression-level: 0
+
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: Encore App ${{ github.ref_name }}
+          make_latest: true
+          files: |
+            Encore-macOS.dmg
+            Encore-Windows.zip
+            Encore-Linux.tar.gz
+          body: |
+            Encore App: Breakdown (pisahkan instrumen, not, chord, MIDI) jalan di komputermu sendiri.
+
+            | Komputer | File | Cara buka pertama kali |
+            |---|---|---|
+            | Mac (chip Apple M1 ke atas) | `Encore-macOS.dmg` | Seret Encore ke Applications, buka. Kalau diblokir: System Settings → Privacy & Security → Open Anyway. Kalau muncul "rusak", jalankan `xattr -cr /Applications/Encore.app` di Terminal |
+            | Windows 10/11 64-bit | `Encore-Windows.zip` | Extract, buka `Encore\Encore.exe`. Kalau muncul SmartScreen: More info → Run anyway |
+            | Linux 64-bit | `Encore-Linux.tar.gz` | `tar -xzf Encore-Linux.tar.gz && ./Encore/Encore` |
+
+            Encore terbuka sendiri di browser. Analisis pertama mengunduh model AI ±500 MB (sekali saja).
