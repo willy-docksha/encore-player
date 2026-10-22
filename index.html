@@ -54,6 +54,8 @@
     <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
     <symbol id="i-music" viewBox="0 0 24 24"><path d="M9 18V5l11-2v13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6.5" cy="18" r="2.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="17.5" cy="16" r="2.5" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
     <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="16" cy="7" r="2.2" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="10" cy="17" r="2.2" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+    <symbol id="i-sparkle" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+    <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 3L5 13.5h6L10 21l8-10.5h-6z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
     <symbol id="i-mac" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 20h8M12 16v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
   </defs>
 </svg>
@@ -204,7 +206,7 @@
           <div class="get-copy">
             <span class="get-tag"><svg><use href="#i-mac"/></svg>Encore App · gratis</span>
             <h2>Bongkar lagu sampai ke not-notnya, langsung di komputermu.</h2>
-            <p>Breakdown memakai AI berat: 6 instrumen dipisah satu per satu, lalu tiap not dan chord dibaca. Server web nggak kuat menanggungnya, tapi laptopmu kuat. Pasang <b>Encore App</b>, buka, lalu tempel link lagu. Selesai.</p>
+            <p>Breakdown memisahkan drum, bass, vokal, dan lainnya, lalu membaca not dan chord-nya. Prosesnya terlalu berat untuk server web, tapi laptopmu kuat. Pasang <b>Encore App</b>, tempel link lagu, selesai. Mode cepat langsung jalan; mau lebih detail? Tinggal aktifkan <b>mesin AI</b> dari dalam app.</p>
             <div class="get-main">
               <a class="btn primary lg" id="getMain" href="#"><svg><use href="#i-download"/></svg><span>Download</span></a>
               <span class="get-need" id="getNeed"></span>
@@ -228,11 +230,12 @@
         <ol class="get-steps">
           <li class="card"><span class="get-num">1</span><div><h3>Download</h3><p>Pilih sesuai komputermu. Sekali download, pakai selamanya.</p></div></li>
           <li class="card"><span class="get-num">2</span><div><h3>Buka Encore</h3><p id="getOpenTip">Encore terbuka sendiri di browser. Biarkan jendelanya jalan selama dipakai.</p></div></li>
-          <li class="card"><span class="get-num">3</span><div><h3>Tempel link</h3><p>YouTube, Google Drive, atau file audio. Tunggu beberapa menit, lalu latihan per instrumen.</p></div></li>
+          <li class="card"><span class="get-num">3</span><div><h3>Tempel link</h3><p>YouTube, Google Drive, atau file audio. Mode cepat selesai sekitar 1 menit, lalu latihan per instrumen.</p></div></li>
         </ol>
 
         <div class="get-perks">
-          <span><svg><use href="#i-sliders"/></svg>Mixer 6 instrumen: mute, solo, export</span>
+          <span><svg><use href="#i-bolt"/></svg>Mode cepat tanpa AI, atau detail pakai AI</span>
+          <span><svg><use href="#i-sliders"/></svg>Mixer per instrumen: mute, solo, export</span>
           <span><svg><use href="#i-music"/></svg>Not bass, vokal, piano, gitar + tab</span>
           <span><svg><use href="#i-bass"/></svg>Chord, tempo, kunci lagu &amp; MIDI</span>
           <span><svg><use href="#i-check"/></svg>Lagu tersimpan di komputermu, nggak diupload ke mana-mana</span>
@@ -254,7 +257,13 @@
           </label>
           <button class="btn primary" type="submit" id="submitBtn"><svg><use href="#i-plus"/></svg><span>Analisis</span></button>
         </form>
-        <p class="drop-hint" id="dropHint">atau tarik file audio ke mana saja di halaman ini</p>
+        <div class="mode-row" id="modeRow">
+          <div class="seg" id="modeSeg" role="radiogroup" aria-label="Mode analisis">
+            <button type="button" data-mode="classic" class="active" title="Tanpa AI, cepat, langsung bisa dipakai"><svg><use href="#i-bolt"/></svg>Cepat</button>
+            <button type="button" data-mode="ai" title="Pakai mesin AI: 6 instrumen, hasil lebih bersih"><svg><use href="#i-sparkle"/></svg>Detail (AI)</button>
+          </div>
+          <p class="drop-hint" id="dropHint">atau tarik file audio ke mana saja di halaman ini</p>
+        </div>
 
         <section class="block" id="queueSection" hidden>
           <div class="block-head"><h3>Antrian</h3><button class="btn sm" type="button" id="startAll" hidden><svg><use href="#i-play"/></svg>Mulai semua</button></div>
@@ -391,6 +400,32 @@ https://youtu.be/…"></textarea>
     <footer class="sheet-foot">
       <button class="btn" value="cancel">Batal</button>
       <button class="btn primary" value="ok" id="relinkOk">Simpan</button>
+    </footer>
+  </form>
+</dialog>
+
+<!-- ai engine install -->
+<dialog class="sheet small" id="aiDialog">
+  <form method="dialog" class="sheet-inner">
+    <header class="sheet-head">
+      <h2><svg class="title-icon"><use href="#i-sparkle"/></svg>Mau hasil lebih detail?</h2>
+      <button class="icon-btn" value="cancel" aria-label="Tutup"><svg><use href="#i-x"/></svg></button>
+    </header>
+    <p>Mode cepat sudah jalan tanpa download apa-apa. Kalau mau hasil yang jauh lebih bersih, pasang <b>mesin AI</b> sekali saja:</p>
+    <ul class="ai-perks">
+      <li><svg><use href="#i-check"/></svg>6 instrumen: gitar dan piano punya jalurnya sendiri</li>
+      <li><svg><use href="#i-check"/></svg>Stem lebih bersih, suara antar instrumen jarang bocor</li>
+      <li><svg><use href="#i-check"/></svg>Not bass, piano, gitar, dan ketukan bar lebih akurat</li>
+    </ul>
+    <p class="ai-size">Download ±300–450 MB (tergantung komputer), lalu model AI ±500 MB saat lagu pertama. Tiap lagu butuh beberapa menit, lebih cepat kalau ada GPU.</p>
+    <div class="ai-progress" id="aiProgress" hidden>
+      <div class="ai-bar"><i id="aiBar"></i></div>
+      <span id="aiProgressText">Menyiapkan…</span>
+    </div>
+    <p class="ai-error" id="aiError" hidden></p>
+    <footer class="sheet-foot">
+      <button class="btn" value="cancel" id="aiLater">Nanti saja</button>
+      <button class="btn primary" type="button" id="aiInstall"><svg><use href="#i-download"/></svg>Download mesin AI</button>
     </footer>
   </form>
 </dialog>

@@ -1,6 +1,7 @@
 """smoke test for a built encore app: start it, analyse a short clip, check the result.
 
-usage: python backend/smoke_test.py <path to the Encore executable>
+usage: python backend/smoke_test.py <Encore executable> [EncoreAI executable]
+with the engine it also redoes the song in ai mode.
 """
 
 from __future__ import annotations
@@ -24,6 +25,11 @@ BASE = f"http://127.0.0.1:{PORT}"
 
 def get(path: str) -> dict:
     with urllib.request.urlopen(BASE + path, timeout=10) as r:
+        return json.load(r)
+
+
+def post(path: str) -> dict:
+    with urllib.request.urlopen(urllib.request.Request(BASE + path, data=b"", method="POST"), timeout=30) as r:
         return json.load(r)
 
 
@@ -62,10 +68,12 @@ def main() -> int:
     exe = sys.argv[1]
     tmp = Path(tempfile.mkdtemp())
     env = {**os.environ, "PORT": str(PORT), "ENCORE_DATA": str(tmp / "data"), "BROWSER": "true"}
+    if len(sys.argv) > 2:
+        env["ENCORE_ENGINE"] = str(Path(sys.argv[2]).resolve())
     log = tmp / "app.log"
     proc = subprocess.Popen([exe], env=env, stdout=log.open("w"), stderr=subprocess.STDOUT)
     try:
-        return run(log)
+        return run(log, ai=len(sys.argv) > 2)
     except Exception as e:
         return report(f"{type(e).__name__}: {e}", log)
     finally:
@@ -73,7 +81,23 @@ def main() -> int:
         print(log.read_text(errors="replace"))
 
 
-def run(log: Path) -> int:
+def wait(job_id: str, log: Path) -> dict | None:
+    last = None
+    for _ in range(1800):
+        m = get(f"/api/jobs/{job_id}")
+        if (m["status"], m.get("stage")) != last:
+            last = (m["status"], m.get("stage"))
+            print(*last, flush=True)
+        if m["status"] in ("done", "error"):
+            break
+        time.sleep(1)
+    if m["status"] != "done" or m.get("reanalyze_error"):
+        report(f"analysis failed at '{m.get('stage')}': {m.get('error') or m.get('reanalyze_error')}", log)
+        return None
+    return get(f"/api/jobs/{job_id}/analysis")
+
+
+def run(log: Path, ai: bool) -> int:
     tmp = log.parent
     for _ in range(180):
         try:
@@ -85,22 +109,20 @@ def run(log: Path) -> int:
         return report("app did not start", log)
     clip(tmp / "smoke.wav")
     job = upload(tmp / "smoke.wav")
-    last = None
-    for _ in range(1800):
-        m = get(f"/api/jobs/{job['id']}")
-        if (m["status"], m.get("stage")) != last:
-            last = (m["status"], m.get("stage"))
-            print(*last)
-        if m["status"] in ("done", "error"):
-            break
-        time.sleep(1)
-    if m["status"] != "done":
-        return report(f"analysis failed at '{m.get('stage')}': {m.get('error')}", log)
-    a = get(f"/api/jobs/{job['id']}/analysis")
-    print("result:", a["key"], a["bpm"], "bpm,", len(a["notes"]), "bass notes,", sorted(a["audio"]))
-    assert set(a["audio"]) >= {"drums", "bass", "vocals", "other"}, a["audio"]
+    a = wait(job["id"], log)
+    if a is None:
+        return 1
+    print("classic:", a["key"], a["bpm"], "bpm,", len(a["notes"]), "bass notes,", sorted(a["audio"]))
+    assert a["result_mode"] == "classic" and set(a["audio"]) == {"drums", "bass", "vocals", "other"}, a["audio"]
     with urllib.request.urlopen(f"{BASE}/api/jobs/{job['id']}/files/bass.mp3", timeout=10) as r:
         assert len(r.read()) > 10000
+    if ai:
+        post(f"/api/jobs/{job['id']}/reanalyze?mode=ai")
+        a = wait(job["id"], log)
+        if a is None:
+            return 1
+        print("ai:", a["key"], a["bpm"], "bpm,", len(a["notes"]), "bass notes,", sorted(a["audio"]))
+        assert a["result_mode"] == "ai" and {"guitar", "piano"} <= set(a["audio"]), a["audio"]
     return 0
 
 

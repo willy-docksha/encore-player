@@ -1,5 +1,6 @@
-# builds the encore app for mac, windows and linux and publishes them as a github release.
-# run it by pushing a tag: git tag app-v1.0.1 && git push origin app-v1.0.1
+# builds the encore app and its optional ai engine for mac, windows and linux and publishes them
+# as a github release. bump APP_VERSION in backend/version.py, then push the matching tag:
+# git tag app-v1.1.0 && git push origin app-v1.1.0
 # the web version links to releases/latest, so a new release reaches the download page by itself.
 name: Encore App
 
@@ -19,18 +20,28 @@ jobs:
         include:
           - os: macos-14
             asset: Encore-macOS.dmg
+            engine: Encore-AI-macOS.tar.gz
             exe: dist/Encore.app/Contents/MacOS/Encore
           - os: windows-latest
             asset: Encore-Windows.zip
+            engine: Encore-AI-Windows.zip
             exe: dist/Encore/Encore.exe
           - os: ubuntu-22.04
             asset: Encore-Linux.tar.gz
+            engine: Encore-AI-Linux.tar.gz
             exe: dist/Encore/Encore
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
+
+      - name: Check the tag matches backend/version.py
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          want="app-v$(sed -n 's/^APP_VERSION = "\(.*\)"/\1/p' backend/version.py)"
+          [ "$want" = "$GITHUB_REF_NAME" ] || { echo "::error::tag $GITHUB_REF_NAME, but backend/version.py says $want"; exit 1; }
 
       - name: Install
         shell: bash
@@ -48,11 +59,16 @@ jobs:
 
       - name: Build
         shell: bash
-        run: $PY -m PyInstaller --noconfirm backend/encore.spec
+        run: |
+          $PY -m PyInstaller --noconfirm backend/encore.spec
+          $PY -m PyInstaller --noconfirm backend/engine.spec
 
-      - name: Smoke test (analyse a short clip with the built app)
+      - name: Smoke test (a short clip in classic mode, then with the ai engine)
         shell: bash
-        run: $PY backend/smoke_test.py "${{ matrix.exe }}"
+        run: |
+          ENGINE=dist/EncoreAI/EncoreAI
+          if [ "$RUNNER_OS" = Windows ]; then ENGINE=dist/EncoreAI/EncoreAI.exe; fi
+          $PY backend/smoke_test.py "${{ matrix.exe }}" "$ENGINE"
 
       - name: Package
         shell: bash
@@ -65,12 +81,17 @@ jobs:
           else
             tar -czf "${{ matrix.asset }}" -C dist Encore
           fi
-          ls -la "${{ matrix.asset }}"
+          # the engine unpacks to EncoreAI/ (backend/ai.py)
+          if [ "$RUNNER_OS" = Windows ]; then 7z a -tzip "${{ matrix.engine }}" ./dist/EncoreAI
+          else tar -czf "${{ matrix.engine }}" -C dist EncoreAI; fi
+          ls -la "${{ matrix.asset }}" "${{ matrix.engine }}"
 
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.asset }}
-          path: ${{ matrix.asset }}
+          path: |
+            ${{ matrix.asset }}
+            ${{ matrix.engine }}
           compression-level: 0
 
   release:
@@ -89,6 +110,9 @@ jobs:
             Encore-macOS.dmg
             Encore-Windows.zip
             Encore-Linux.tar.gz
+            Encore-AI-macOS.tar.gz
+            Encore-AI-Windows.zip
+            Encore-AI-Linux.tar.gz
           body: |
             Encore App: Breakdown (pisahkan instrumen, not, chord, MIDI) jalan di komputermu sendiri.
 
@@ -98,4 +122,6 @@ jobs:
             | Windows 10/11 64-bit | `Encore-Windows.zip` | Extract, buka `Encore\Encore.exe`. Kalau muncul SmartScreen: More info → Run anyway |
             | Linux 64-bit | `Encore-Linux.tar.gz` | `tar -xzf Encore-Linux.tar.gz && ./Encore/Encore` |
 
-            Encore terbuka sendiri di browser. Analisis pertama mengunduh model AI ±500 MB (sekali saja).
+            Encore terbuka sendiri di browser. Breakdown langsung jalan dengan **mode cepat** (tanpa AI).
+            Mau lebih detail? Pilih **Detail (AI)** di dalam app: mesin AI (file `Encore-AI-*`) diunduh dan dipasang otomatis,
+            lalu model AI ±500 MB saat lagu pertama. File `Encore-AI-*` tidak perlu diunduh manual.

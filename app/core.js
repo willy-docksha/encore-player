@@ -173,13 +173,16 @@ export const server = {
   youtube: false,
   analysis: false,
   mode: "web", // "app" inside the encore app
+  ai: null,
   checked: false,
   listeners: new Set(),
   async check() {
     let ok = false;
     try {
       const r = await fetch("/api/health", { cache: "no-store", signal: AbortSignal.timeout(3000) });
-      ok = r.ok && !!(await r.json()).app;
+      const d = r.ok ? await r.json() : {};
+      ok = !!d.app;
+      this.ai = d.ai || null; // the optional ai engine (aimode.js)
     } catch { /* web version, or the app was closed */ }
     this.bass = ok;
     this.analysis = ok;

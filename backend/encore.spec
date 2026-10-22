@@ -1,5 +1,6 @@
 # pyinstaller spec for the encore app: pyinstaller backend/encore.spec (run from the repo root)
 # mac -> dist/Encore.app, windows -> dist/Encore/Encore.exe, linux -> dist/Encore/Encore
+# the app only has the classic analysis; the ai engine is built separately (backend/engine.spec)
 
 import sys
 from pathlib import Path
@@ -17,8 +18,8 @@ datas += [(str(p), ".") for p in ROOT.glob("icon-*.png")]
 binaries = []
 hiddenimports = collect_submodules("uvicorn")
 
-# packages that load model configs, stubs or binaries from their own folder
-for pkg in ("demucs", "beat_this", "basic_pitch", "librosa", "imageio_ffmpeg", "yt_dlp_ejs", "rotary_embedding_torch"):
+# packages that load stubs or binaries from their own folder
+for pkg in ("librosa", "imageio_ffmpeg", "yt_dlp_ejs"):
     d, b, h = collect_all(pkg)
     datas += d
     binaries += b
@@ -31,8 +32,11 @@ a = Analysis(
     datas=datas,
     binaries=binaries,
     hiddenimports=hiddenimports,
-    # big optional extras nothing here uses
-    excludes=["tensorflow", "coremltools", "tflite_runtime", "matplotlib", "tkinter", "IPython", "notebook", "pytest"],
+    # the ai stack lives in the engine; plus big optional extras nothing here uses
+    excludes=["torch", "torchaudio", "torchvision", "demucs", "beat_this", "basic_pitch", "onnxruntime", "onnx",
+              "onnxscript", "julius", "dora", "openunmix", "lameenc", "rotary_embedding_torch", "einops",
+              "huggingface_hub", "hf_xet", "sympy", "tensorflow", "coremltools", "tflite_runtime", "matplotlib",
+              "tkinter", "IPython", "notebook", "pytest", "PIL"],
 )
 pyz = PYZ(a.pure)
 icon = str(ROOT / "icon-512.png")

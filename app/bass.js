@@ -2,6 +2,7 @@
 
 import { $, $$, el, icon, setIcon, store, fmtTime, fmtDate, fmtAgo, parseLink, toast, confirmDialog, showMenu, server, media, router, onKeys, api } from "./core.js";
 import { renderGetApp } from "./getapp.js";
+import { MODES, getMode, setMode, ensureAi } from "./aimode.js";
 import { addToPlaylist } from "./playlist.js";
 
 const SHARP = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
@@ -103,6 +104,7 @@ export async function submitLink(url, title) {
   const fd = new FormData();
   fd.append("kind", p.type === "yt" ? "youtube" : "gdrive");
   fd.append("url", url);
+  fd.append("mode", getMode());
   try {
     const job = await api("/api/jobs", { method: "POST", body: fd });
     if (job.existing && job.status === "done") {
@@ -130,6 +132,7 @@ async function uploadFile(file) {
   const fd = new FormData();
   fd.append("kind", "file");
   fd.append("file", file);
+  fd.append("mode", getMode());
   try {
     const job = await api("/api/jobs", { method: "POST", body: fd });
     toast(`Masuk antrian: ${file.name}${job.status === "pending" ? ". Klik Mulai untuk memproses" : ""}`);
@@ -262,6 +265,7 @@ function songCard(j) {
   drawSpark(spark, j.id);
   const meta = el("div", "meta");
   meta.append(el("span", "chip", j.key || "?"), el("span", "chip", `${Math.round(j.bpm || 0)} BPM`), el("span", "chip", fmtTime(j.duration)));
+  if (j.result_mode === "classic") { const c = el("span", "chip", "cepat"); c.title = "Dianalisis dengan mode cepat (tanpa AI)"; meta.append(c); }
   if (j.outdated) { const c = el("span", "chip warn", "versi lama"); c.title = "Dianalisis dengan algoritma lama. Analisis ulang untuk hasil terbaru."; meta.append(c); }
   card.append(spark, el("div", "t", j.title || "(tanpa judul)"), meta);
   if (j.analyzed_at) card.append(el("div", "when", `${SRC[j.source_type] || ""} · dianalisis ${fmtAgo(j.analyzed_at)}`));
@@ -280,6 +284,7 @@ function songMenu(j) {
   return [
     j.url && { label: j.source_type === "gdrive" ? "Buka di Google Drive" : "Buka di YouTube", icon: "link", href: j.url },
     j.url && { label: "Putar di Playlist", icon: "list", onClick: () => addToPlaylist(j.url, j.title) },
+    server.analysis && j.result_mode === "classic" && { label: "Analisis detail (AI)", icon: "sparkle", onClick: () => upgradeAi(j) },
     server.analysis && { label: "Analisis ulang", icon: "refresh", onClick: () => reanalyze(j) },
     server.analysis && { label: "Hapus dari Library", icon: "trash", danger: true, onClick: () => removeSong(j) },
   ];
@@ -289,6 +294,23 @@ async function reanalyze(j) {
   if (!(await confirmDialog("Analisis ulang?", `“${j.title}” akan diproses lagi dengan algoritma terbaru. Hasil lama tetap ada sampai yang baru selesai.`, { ok: "Analisis ulang" }))) return;
   try { await api(`/api/jobs/${j.id}/reanalyze`, { method: "POST" }); toast("Masuk antrian"); } catch (ex) { toast(ex.message, { error: true }); }
   poll();
+}
+
+// redo a classic result with the ai engine (installs it first if needed)
+async function upgradeAi(j) {
+  if (!(await ensureAi())) return;
+  try {
+    await api(`/api/jobs/${j.id}/reanalyze?mode=ai`, { method: "POST" });
+    toast("Masuk antrian mode detail (AI). Hasil cepat tetap bisa dipakai sampai selesai.", { action: "Lihat", onAction: () => router.go("#/breakdown") });
+  } catch (ex) { toast(ex.message, { error: true }); }
+  poll();
+}
+
+// the cepat / detail (ai) switch above the library
+function paintMode() {
+  const mode = getMode();
+  $$("#modeSeg button").forEach((b) => b.classList.toggle("active", b.dataset.mode === mode));
+  $("#dropHint").textContent = `${MODES[mode]} Tarik file audio ke sini untuk menambah lagu.`;
 }
 
 async function removeSong(j) {
@@ -1499,10 +1521,9 @@ export function enterBassHome() {
   openId = null;
   document.title = "Breakdown · Encore";
   $("#urlInput").placeholder = "Tempel link YouTube atau Google Drive…";
-  $("#dropHint").textContent = "atau tarik file audio ke sini · diproses di komputer ini"
-    + " · pertama kali mengunduh model AI ±500 MB (sekali saja)";
+  paintMode();
   $("#jobForm").hidden = !server.analysis;
-  $("#dropHint").hidden = !server.analysis;
+  $("#modeRow").hidden = !server.analysis;
   // web version: show where to get the app
   $("#bassGetApp").hidden = server.bass || !server.checked;
   if (!server.bass && server.checked) renderGetApp();
@@ -1527,6 +1548,11 @@ export async function enterSong(id) {
     if (data.analyzed_at) {
       const c = el("span", "chip" + (data.outdated ? " warn" : ""), `Dianalisis ${fmtDate(data.analyzed_at)}${data.outdated ? " · versi lama" : ""}`);
       c.title = data.outdated ? "Algoritma sudah diperbarui sejak analisis ini. Analisis ulang untuk hasil terbaru." : fmtAgo(data.analyzed_at);
+      chips.push(c);
+    }
+    if (data.result_mode === "classic") {
+      const c = el("span", "chip", "Mode cepat");
+      c.title = "Dianalisis tanpa AI. Pakai Detail (AI) untuk 6 instrumen dan hasil yang lebih bersih.";
       chips.push(c);
     }
     if (data.url) {
@@ -1565,6 +1591,13 @@ export async function enterSong(id) {
       showMenu(exp, player.exportOptions().map((o) => ({ label: o.label, icon: "download", onClick: () => player.exportMix(o.list, o.suffix) })));
     };
     acts.push(exp, midi);
+    if (data.result_mode === "classic" && server.analysis) {
+      const up = el("button", "btn sm ai-up");
+      up.type = "button"; up.title = "Analisis ulang pakai AI: 6 instrumen, hasil lebih bersih";
+      up.append(icon("sparkle"), "Detail pakai AI");
+      up.onclick = () => upgradeAi(job);
+      acts.unshift(up);
+    }
     if (server.analysis) acts.push(more);  // view-only server: nothing left in this menu
     $("#songActions").replaceChildren(...acts);
     const audioMap = data.audio || { bass: "bass.mp3", rest: "rest.mp3" };
@@ -1598,6 +1631,13 @@ export function initBass() {
     enterBassHome();
     if (!server.bass) toast("Encore App belum terdeteksi di halaman ini. Kalau app-nya sudah jalan, buka localhost:8765.");
   };
+  $$("#modeSeg button").forEach((b) => {
+    b.onclick = async () => {
+      if (b.dataset.mode === "ai" && !(await ensureAi())) return;
+      setMode(b.dataset.mode);
+      paintMode();
+    };
+  });
   $("#quitApp").onclick = async () => {
     if (!(await confirmDialog("Tutup Encore App?", "Lagu yang sedang diproses akan dilanjutkan saat Encore dibuka lagi.", { ok: "Tutup" }))) return;
     try { await fetch("/api/quit", { method: "POST" }); } catch { /* already gone */ }

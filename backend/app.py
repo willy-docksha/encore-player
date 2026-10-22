@@ -31,6 +31,7 @@ from fastapi import Request
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
+import ai
 from pipeline import (DRIVE_PRIVATE_MSG, DRUM_VERSION, PIPELINE_VERSION, analyze, drive_title, drum_hits, fetch_audio,
                       open_drive, safe_name, shutdown_pool, source_key, stem_layers, write_drum_midi)
 
@@ -54,6 +55,7 @@ def data_dir() -> Path:
 
 DATA = data_dir() / "jobs"
 DATA.mkdir(parents=True, exist_ok=True)
+ai.setup(data_dir())
 CACHE = data_dir() / "cache"  # original downloads, keyed by video / file id
 # files a finished job may serve (older jobs have bass + rest, newer ones all stems)
 PUBLIC_JOB_FILES = ({f"{n}.mp3" for n in ("bass", "rest", "drums", "vocals", "guitar", "piano", "other")}
@@ -178,12 +180,15 @@ def analysis_stage(job_id: str) -> None:
             check_cancel(job_id)
             write_meta(job_id, stage=stage, progress=round(pct, 3))
 
-        result = analyze(DATA / job_id, meta.get("title") or "audio", progress)
+        # classic runs here; the detailed ai analysis runs in the separately installed engine
+        mode = meta.get("mode") or "classic"
+        run = ai.analyze if mode == "ai" else lambda d, t, p: analyze(d, t, p, mode="classic")
+        result = run(DATA / job_id, meta.get("title") or "audio", progress)
         write_meta(job_id, status="done", stage="Selesai", progress=1.0, title=result["title"],
                    duration=result["duration"], key=result["key"], bpm=result["bpm"],
                    compute_sec=round(time.time() - started, 1), finished=time.time(),
                    reanalyze_error=None,
-                   version=result.get("version"))
+                   version=result.get("version"), result_mode=result.get("mode", mode))
     except Cancelled:
         finish_cancel(job_id)
     except Exception as e:
@@ -271,9 +276,11 @@ def existing_job(source: dict) -> dict | None:
 @app.post("/api/jobs")
 async def create_job(
     kind: str = Form(...),
+    mode: str = Form("classic"),
     url: str | None = Form(None),
     file: UploadFile | None = File(None),
 ):
+    check_mode(mode)
     if kind in ("youtube", "gdrive"):
         if not url or not url.strip().startswith("http"):
             raise HTTPException(400, "link tidak valid")
@@ -296,19 +303,29 @@ async def create_job(
     else:
         raise HTTPException(400, "kind tidak dikenal")
 
-    meta = write_meta(job_id, id=job_id, title=title, source=source, source_type=source["type"],
+    meta = write_meta(job_id, id=job_id, title=title, source=source, source_type=source["type"], mode=mode,
                       status="queued", stage="Menunggu unduhan", progress=0.0, created=time.time())
     download_pool.submit(download_stage, job_id)
     return public(meta)
 
 
+def check_mode(mode: str) -> None:
+    """classic is built in; ai needs the engine installed first."""
+    if mode not in ("classic", "ai"):
+        raise HTTPException(400, "mode tidak dikenal")
+    if mode == "ai" and ai.command() is None:
+        raise HTTPException(409, "Mesin AI belum terpasang. Download dulu dari tombol Analisis detail (AI).")
+
+
 def analysis_info(job_id: str, meta: dict) -> dict:
-    """when the current result was produced and whether it predates the latest pipeline."""
+    """when the current result was produced, with which mode, and whether it predates the latest pipeline."""
     p = DATA / job_id / "analysis.json"
     if not p.exists():
         return {}
     at = meta.get("finished") or p.stat().st_mtime  # older jobs: fall back to file time
-    return {"analyzed_at": at, "outdated": (meta.get("version") or 0) < PIPELINE_VERSION}
+    # results from before the classic mode existed were all made with ai
+    return {"analyzed_at": at, "outdated": (meta.get("version") or 0) < PIPELINE_VERSION,
+            "result_mode": meta.get("result_mode", "ai")}
 
 
 def public(meta: dict) -> dict:
@@ -343,9 +360,11 @@ def retry_job(job_id: str):
 
 
 @app.post("/api/jobs/{job_id}/reanalyze")
-def reanalyze_job(job_id: str):
-    """run the latest pipeline again on a finished song (re-downloads links)."""
+def reanalyze_job(job_id: str, mode: str | None = None):
+    """run the latest pipeline again on a finished song (re-downloads links); ?mode=ai upgrades it."""
     meta = read_meta(job_id)
+    mode = mode or meta.get("mode") or "classic"
+    check_mode(mode)
     if meta.get("status") in ACTIVE:
         raise HTTPException(400, "lagu ini masih di antrian")
     src = meta.get("source")
@@ -353,7 +372,7 @@ def reanalyze_job(job_id: str):
         raise HTTPException(400, "info sumber tidak ada, silakan tambahkan ulang")
     if src["type"] == "file" and not upload_path(job_id, src).exists():
         raise HTTPException(400, "file asli sudah tidak tersimpan, silakan upload ulang")
-    write_meta(job_id, created=time.time())
+    meta = write_meta(job_id, created=time.time(), mode=mode)
     enqueue(job_id, meta)
     return public(read_meta(job_id))
 
@@ -437,7 +456,18 @@ def delete_job(job_id: str):
 @app.get("/api/health")
 def health():
     # the web app looks for this route to know it runs inside the encore app
-    return {"ok": True, "app": True, "frozen": FROZEN, "platform": sys.platform, "version": PIPELINE_VERSION}
+    return {"ok": True, "app": True, "frozen": FROZEN, "platform": sys.platform, "version": PIPELINE_VERSION,
+            "ai": ai.status()}
+
+
+@app.post("/api/ai/install")
+def ai_install():
+    return ai.install()
+
+
+@app.delete("/api/ai")
+def ai_remove():
+    return ai.remove()
 
 
 @app.post("/api/quit")

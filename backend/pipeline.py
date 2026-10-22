@@ -269,6 +269,70 @@ def separate(src_wav: Path, outdir: Path, on_progress: Callable[[float], None] |
     return paths
 
 
+def _band(freqs: np.ndarray, lo: float, hi: float, soft: float = 0.5) -> np.ndarray:
+    """weight 1 inside lo..hi hz, fading out over `soft` octaves on each side."""
+    f = np.maximum(freqs, 1.0)
+    below = np.clip(1 + np.log2(f / lo) / soft, 0, 1)
+    above = np.clip(1 - np.log2(f / hi) / soft, 0, 1)
+    return np.minimum(below, above)[:, None]
+
+
+def separate_classic(src_wav: Path, outdir: Path, on_progress: Callable[[float], None] | None = None) -> dict[str, Path]:
+    """fast separation without ai: soft spectral masks, so the stems still add up to the mix.
+
+    drums: percussive part (hpss). vocals: harmonic, centre-panned, non-repeating sound in the
+    voice band (repet-sim). bass: low harmonic rest. other: everything left.
+    """
+    audio, _ = sf.read(src_wav, dtype="float32", always_2d=True)
+    n_fft, hop = 4096, 1024
+    tick = on_progress or (lambda p: None)
+    spec = [librosa.stft(audio[:, ch], n_fft=n_fft, hop_length=hop) for ch in range(2)]
+    L, R = spec
+    freqs = librosa.fft_frequencies(sr=SR, n_fft=n_fft)
+    mag = (np.abs(L) + np.abs(R)) / 2
+    tick(0.1)
+
+    harm, perc = librosa.decompose.hpss(mag, kernel_size=31, mask=True, margin=1.0)
+    tick(0.35)
+
+    # how alike left and right are per bin: 1 = centre (lead vocal), 0 = panned to a side
+    centre = 2 * np.abs(L * np.conj(R)) / (np.abs(L) ** 2 + np.abs(R) ** 2 + 1e-10)
+    # repet-sim: the backing repeats across the song, the voice does not. chunks keep memory small
+    sh = mag * harm
+    fg = np.zeros_like(sh)
+    chunk = int(60 * SR / hop)
+    width = int(2 * SR / hop)
+    for i, a in enumerate(range(0, sh.shape[1], chunk)):
+        part = sh[:, a:a + chunk]
+        if part.shape[1] <= 2 * width + 1:
+            fg[:, a:a + chunk] = 0.5
+            continue
+        bg = np.minimum(part, librosa.decompose.nn_filter(part, aggregate=np.median, metric="cosine", width=width))
+        fg[:, a:a + chunk] = librosa.util.softmask(part - bg, 2 * bg, power=2)
+        tick(0.35 + 0.4 * min(1.0, (a + chunk) / sh.shape[1]))
+
+    m_drums = perc * _band(freqs, 30, 16000, soft=1.0)
+    m_vocals = harm * fg * centre ** 2 * _band(freqs, 180, 6000, soft=1.0)
+    m_bass = (harm - m_vocals) * _band(freqs, 30, 180, soft=0.6)
+    tick(0.8)
+
+    n = audio.shape[0]
+    istft = lambda m: np.stack([librosa.istft(S * m, hop_length=hop, length=n) for S in spec], 1)
+    stems = {"drums": istft(m_drums), "vocals": istft(m_vocals), "bass": istft(m_bass)}
+    # same split as the ai path: harmony for chords, "other" is the exact rest of the mix
+    harmony = audio - stems["bass"] - stems["drums"] - stems["vocals"]
+    stems["other"] = harmony
+
+    paths: dict[str, Path] = {}
+    for name, data in stems.items():
+        paths[name] = outdir / f"stem_{name}.wav"
+        sf.write(paths[name], data, SR)
+    paths["harmony"] = outdir / "stem_harmony.wav"
+    sf.write(paths["harmony"], harmony, SR)
+    tick(1.0)
+    return paths
+
+
 # ---------------------------------------------------------------- bass transcription
 
 PYIN_SR, PYIN_HOP, PYIN_FRAME = 11025, 64, 1024
@@ -347,7 +411,7 @@ def parallel_pyin(y: np.ndarray, on_progress: Callable[[float], None] | None = N
     return f0, voiced, vprob
 
 
-def transcribe_bass(bass_wav: Path, on_progress: Callable[[float], None] | None = None) -> list[dict]:
+def transcribe_bass(bass_wav: Path, on_progress: Callable[[float], None] | None = None, ai: bool = True) -> list[dict]:
     sr, hop, frame = PYIN_SR, PYIN_HOP, PYIN_FRAME
     y, _ = librosa.load(bass_wav, sr=sr, mono=True)
     if not np.any(y):
@@ -426,7 +490,7 @@ def transcribe_bass(bass_wav: Path, on_progress: Callable[[float], None] | None 
 
     # sections where pyin is unsure (slap, pops, dead notes): use basic pitch there instead
     weak = weak_sections(vprob, rms_db, frame_t)
-    if weak.any():
+    if ai and weak.any():
         try:
             alt = basic_pitch_notes(bass_wav)
             in_weak = lambda t: weak[min(len(weak) - 1, int(t / SECTION_SEC))]
@@ -646,18 +710,32 @@ def absorb_blips(notes: list[dict], max_len: float = 0.08, max_gap: float = 0.03
 
 # ---------------------------------------------------------------- beats / key / chords
 
-def detect_beats(mix_wav: Path) -> tuple[float, list[float], list[float]]:
-    """returns (bpm, beats, downbeats). uses beat_this, falls back to librosa (no downbeats)."""
+def guess_downbeats(y: np.ndarray, sr: int, beats: np.ndarray) -> np.ndarray:
+    """4/4 guess without ai: the beat phase where low (kick / bass) onsets hit hardest starts the bar."""
+    if len(beats) < 8:
+        return np.array([])
+    onset = librosa.onset.onset_strength(y=y, sr=sr, hop_length=512, fmax=200, n_mels=32)
+    idx = np.clip(librosa.time_to_frames(beats, sr=sr, hop_length=512), 0, len(onset) - 1)
+    phase = max(range(4), key=lambda k: onset[idx[k::4]].mean())
+    return beats[phase::4]
+
+
+def detect_beats(mix_wav: Path, ai: bool = True) -> tuple[float, list[float], list[float]]:
+    """returns (bpm, beats, downbeats). uses beat_this, librosa without ai (downbeats guessed)."""
     y, sr = librosa.load(mix_wav, sr=22050, mono=True)
     try:
+        if not ai:
+            raise ImportError("classic mode")
         from beat_this.inference import Audio2Beats
 
         beats, downs = Audio2Beats(checkpoint_path="final0", device=device(), dbn=False)(y, sr)
         beats, downs = np.asarray(beats), np.asarray(downs)
     except Exception:
-        traceback.print_exc()
+        if ai:
+            traceback.print_exc()
         _, frames = librosa.beat.beat_track(y=y, sr=sr, hop_length=512)
-        beats, downs = librosa.frames_to_time(frames, sr=sr, hop_length=512), np.array([])
+        beats = librosa.frames_to_time(frames, sr=sr, hop_length=512)
+        downs = guess_downbeats(y, sr, beats)
     bpm = 60.0 / float(np.median(np.diff(beats))) if len(beats) > 1 else 0.0
     r = lambda a: [round(float(t), 3) for t in a]
     return round(bpm, 1), r(beats), r(downs)
@@ -1114,26 +1192,32 @@ def fetch_audio(job_dir: Path, source: dict, on_progress: Callable[[float], None
     return {"title": title, "duration": round(float(sf.info(src_wav).duration), 3), "from_cache": from_cache}
 
 
-def analyze(job_dir: Path, title: str, progress: Progress) -> dict:
-    """heavy part: expects tmp/source.wav from fetch_audio."""
+def analyze(job_dir: Path, title: str, progress: Progress, mode: str = "ai") -> dict:
+    """heavy part: expects tmp/source.wav from fetch_audio.
+
+    mode "ai": demucs, beat_this, basic pitch (the ai engine). "classic": no ai models at all.
+    """
+    ai = mode == "ai"
     tmp = job_dir / "tmp"
     src_wav = tmp / "source.wav"
     duration = float(sf.info(src_wav).duration)
 
-    progress("Memisahkan instrumen (Demucs)", 0.0)
-    stems = separate(src_wav, tmp, lambda p: progress("Memisahkan instrumen (Demucs)", 0.45 * p))
+    sep_stage = "Memisahkan instrumen (Demucs)" if ai else "Memisahkan instrumen (mode cepat)"
+    progress(sep_stage, 0.0)
+    stems = (separate if ai else separate_classic)(src_wav, tmp, lambda p: progress(sep_stage, 0.45 * p))
 
     progress("Transkripsi bass", 0.45)
-    notes = transcribe_bass(stems["bass"], lambda p: progress("Transkripsi bass", 0.45 + 0.13 * p))
+    notes = transcribe_bass(stems["bass"], lambda p: progress("Transkripsi bass", 0.45 + 0.13 * p), ai=ai)
 
     progress("Transkripsi melodi vokal", 0.58)
     vocals = transcribe_vocals(stems["vocals"], lambda p: progress("Transkripsi melodi vokal", 0.58 + 0.12 * p))
 
-    progress("Transkripsi piano & gitar", 0.7)
+    if ai:
+        progress("Transkripsi piano & gitar", 0.7)
     poly = {part: transcribe_poly(stems[part], part) for part in ("piano", "guitar") if part in stems}
 
     progress("Deteksi tempo & beat", 0.78)
-    bpm, beats, downbeats = detect_beats(src_wav)
+    bpm, beats, downbeats = detect_beats(src_wav, ai=ai)
 
     progress("Deteksi chord & kunci", 0.85)
     chords, key = detect_chords(stems["harmony"], stems["bass"], beats, notes)
@@ -1166,6 +1250,7 @@ def analyze(job_dir: Path, title: str, progress: Progress) -> dict:
         "layers": layers,
         "audio": {name: f"{name}.mp3" for name in STEMS if name in stems},
         "version": PIPELINE_VERSION,
+        "mode": mode,
     }
     (job_dir / "analysis.json").write_text(json.dumps(result))
     shutil.rmtree(tmp, ignore_errors=True)
