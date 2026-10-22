@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import multiprocessing
+import os
 import sys
 from pathlib import Path
 
@@ -19,6 +20,13 @@ def emit(**msg) -> None:
 
 
 def main() -> int:
+    # https for the model downloads (see main.py); set by the app already, needed when run by hand
+    try:
+        import certifi
+
+        os.environ.setdefault("SSL_CERT_FILE", certifi.where())
+    except ImportError:
+        pass
     if len(sys.argv) >= 2 and sys.argv[1] == "check":
         # the app runs this once after installing, to be sure the engine starts on this computer
         import demucs

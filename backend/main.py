@@ -20,6 +20,17 @@ from pathlib import Path
 PORT = int(os.environ.get("PORT") or 8765)
 
 
+def use_bundled_certificates() -> None:
+    """the packaged python can't read the system certificate store: use certifi's for https
+    (drive, youtube, ai engine and model downloads; the engine inherits it)."""
+    try:
+        import certifi
+
+        os.environ.setdefault("SSL_CERT_FILE", certifi.where())
+    except ImportError:
+        pass
+
+
 def running_app(port: int) -> bool:
     """true when an encore app already answers on this port."""
     try:
@@ -76,6 +87,7 @@ def run_mac_app(url: str, serve) -> None:
 
 
 def main() -> None:
+    use_bundled_certificates()
     # a second launch just opens the window of the one already running
     if running_app(PORT):
         webbrowser.open(f"http://localhost:{PORT}/#/breakdown")

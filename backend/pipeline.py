@@ -720,15 +720,30 @@ def guess_downbeats(y: np.ndarray, sr: int, beats: np.ndarray) -> np.ndarray:
     return beats[phase::4]
 
 
+# beat_this checkpoint: the official jku host first, then encore's own copy of the same file
+# (same name, so torch hub caches it once). jku was down (503) on 2026-10-22.
+BEAT_THIS_CHECKPOINTS = ("final0", "https://huggingface.co/willydocksha/encore-models/resolve/main/beat_this-final0.ckpt")
+
+
+def beat_this_model():
+    from beat_this.inference import Audio2Beats
+
+    last = None
+    for ckpt in BEAT_THIS_CHECKPOINTS:
+        try:
+            return Audio2Beats(checkpoint_path=ckpt, device=device(), dbn=False)
+        except Exception as e:
+            last = e
+    raise RuntimeError(f"checkpoint beat_this tidak bisa diunduh: {last}")
+
+
 def detect_beats(mix_wav: Path, ai: bool = True) -> tuple[float, list[float], list[float]]:
     """returns (bpm, beats, downbeats). uses beat_this, librosa without ai (downbeats guessed)."""
     y, sr = librosa.load(mix_wav, sr=22050, mono=True)
     try:
         if not ai:
             raise ImportError("classic mode")
-        from beat_this.inference import Audio2Beats
-
-        beats, downs = Audio2Beats(checkpoint_path="final0", device=device(), dbn=False)(y, sr)
+        beats, downs = beat_this_model()(y, sr)
         beats, downs = np.asarray(beats), np.asarray(downs)
     except Exception:
         if ai:

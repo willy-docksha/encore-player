@@ -10,6 +10,7 @@ uvicorn
 python-multipart
 yt-dlp[default]
 imageio-ffmpeg
+certifi  # https certificates for the packaged app
 pyobjc-framework-Cocoa; sys_platform == "darwin"  # dock icon of the mac app
 beat-this @ https://github.com/CPJKU/beat_this/archive/main.zip
 onnxruntime
