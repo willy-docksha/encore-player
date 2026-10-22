@@ -101,11 +101,14 @@ def meta_path(job_id: str) -> Path:
     return DATA / job_id / "meta.json"
 
 
+# meta.json is read and written from several threads: always under the lock, and written to a
+# temp file first, so a reader never sees a half-written file
 def read_meta(job_id: str) -> dict:
-    p = meta_path(job_id)
-    if not p.exists():
-        raise HTTPException(404, "job tidak ditemukan")
-    return json.loads(p.read_text())
+    with lock:
+        p = meta_path(job_id)
+        if not p.exists():
+            raise HTTPException(404, "job tidak ditemukan")
+        return json.loads(p.read_text())
 
 
 def write_meta(job_id: str, **updates) -> dict | None:
@@ -115,17 +118,20 @@ def write_meta(job_id: str, **updates) -> dict | None:
             return None  # deleted meanwhile
         meta = json.loads(p.read_text()) if p.exists() else {}
         meta.update(updates)
-        p.write_text(json.dumps(meta))
+        tmp = p.with_suffix(".tmp")
+        tmp.write_text(json.dumps(meta))
+        os.replace(tmp, p)
         return meta
 
 
 def all_meta() -> list[dict]:
     out = []
-    for p in DATA.glob("*/meta.json"):
-        try:
-            out.append(json.loads(p.read_text()))
-        except Exception:
-            pass
+    with lock:
+        for p in DATA.glob("*/meta.json"):
+            try:
+                out.append(json.loads(p.read_text()))
+            except Exception:
+                pass
     return out
 
 

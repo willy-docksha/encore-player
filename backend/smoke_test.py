@@ -12,6 +12,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import urllib.error
 import urllib.request
 import uuid
 from pathlib import Path
@@ -24,8 +25,11 @@ BASE = f"http://127.0.0.1:{PORT}"
 
 
 def get(path: str) -> dict:
-    with urllib.request.urlopen(BASE + path, timeout=10) as r:
-        return json.load(r)
+    try:
+        with urllib.request.urlopen(BASE + path, timeout=10) as r:
+            return json.load(r)
+    except urllib.error.HTTPError as e:
+        raise RuntimeError(f"GET {path}: {e.code} {e.read()[:300]!r}") from e
 
 
 def post(path: str) -> dict:

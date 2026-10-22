@@ -63,6 +63,12 @@ jobs:
           $PY -m PyInstaller --noconfirm backend/encore.spec
           $PY -m PyInstaller --noconfirm backend/engine.spec
 
+      # demucs / beat_this weights (~500 mb) for the smoke test, kept between releases
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/torch
+          key: torch-models-${{ runner.os }}-v1
+
       - name: Smoke test (a short clip in classic mode, then with the ai engine)
         shell: bash
         run: |
