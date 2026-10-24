@@ -561,9 +561,9 @@ kbd { font: .74rem var(--f-mono); border: 1px solid var(--line); border-bottom-w
   .nav-eq { position: absolute; top: 8px; left: calc(50% + 12px); }
   .main { padding-bottom: calc(var(--tab-h) + 32px + env(safe-area-inset-bottom, 0px)); }
   /* phone order: player, then the song list, then practice tools */
-  .pl-grid { display: flex; flex-direction: column; }
+  .pl-grid { display: flex; flex-direction: column; align-items: stretch; }
   .pl-main { display: contents; }
-  .player { order: 1; }
+  .player { order: 1; min-width: 0; }
   .queue-card { order: 2; position: static; max-height: none; }
   .tools { order: 3; }
   .toasts { bottom: calc(var(--tab-h) + 16px + env(safe-area-inset-bottom, 0px)); right: 12px; left: 12px; align-items: stretch; }
@@ -574,6 +574,9 @@ kbd { font: .74rem var(--f-mono); border: 1px solid var(--line); border-bottom-w
   .main { padding-left: 14px; padding-right: 14px; padding-top: calc(18px + env(safe-area-inset-top, 0px)); }
   .page-head { margin-bottom: 14px; }
   .player { padding: 12px; }
+  /* long titles: wrap to two lines instead of a short ellipsis */
+  .now-title { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; font-size: 1.15rem; }
+  .now { gap: 8px; }
   .tools { grid-template-columns: minmax(0, 1fr); gap: 12px; }
   .tools .tool:last-child { grid-column: auto; }
   .transport { gap: 0; }
