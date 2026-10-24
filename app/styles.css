@@ -572,7 +572,11 @@ kbd { font: .74rem var(--f-mono); border: 1px solid var(--line); border-bottom-w
 }
 @media (max-width: 640px) {
   .main { padding-left: 14px; padding-right: 14px; padding-top: calc(18px + env(safe-area-inset-top, 0px)); }
-  .page-head { margin-bottom: 14px; }
+  .page-head { margin-bottom: 14px; gap: 10px; }
+  /* count on the left, compact add button on the right */
+  #view-playlist .head-actions { width: 100%; justify-content: space-between; }
+  #openEditor { min-height: 34px; padding: 6px 12px; font-size: .85rem; box-shadow: none; }
+  #openEditor svg { width: 16px; height: 16px; }
   .player { padding: 12px; }
   /* long titles: wrap to two lines instead of a short ellipsis */
   .now-title { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; font-size: 1.15rem; }
