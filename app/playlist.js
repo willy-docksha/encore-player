@@ -534,6 +534,12 @@ function setMuted(m) {
 }
 $("#volBtn").onclick = () => setMuted(!muted);
 $("#vol").oninput = (e) => { store.set("lp-vol", +e.target.value); setMuted(false); };
+function nudgeVol(d) {
+  const v = Math.min(100, Math.max(0, +$("#vol").value + d));
+  $("#vol").value = v;
+  store.set("lp-vol", v);
+  setMuted(false);
+}
 
 // ------------------------------------------------------------------ a-b loop (buttons + draggable handles on the seek bar)
 function updateAB() {
@@ -629,7 +635,10 @@ onKeys("playlist", (e) => {
     j: () => P.seek(P.time() - 10), l: () => P.seek(P.time() + 10),
     "[": () => applyRate(rate - 0.05), "]": () => applyRate(rate + 0.05),
     a: setA, b: setB, c: clearAB, m: () => setMuted(!muted),
+    arrowup: () => nudgeVol(5), arrowdown: () => nudgeVol(-5),
   }[e.key.toLowerCase()];
+  // a focused range slider already handles its own arrows
+  if (e.target.type === "range" && e.key.startsWith("Arrow")) return;
   if (act) { e.preventDefault(); act(); }
 });
 

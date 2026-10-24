@@ -118,7 +118,7 @@ code { font: .85em var(--f-mono); background: var(--surface-2); padding: 1px 5px
   .nav-folded .brand-text, .nav-folded .nav-item > span:not(.nav-badge):not(.nav-eq), .nav-folded .server-text { display: none; }
   .nav-folded .nav-item { justify-content: center; padding: 10px; position: relative; }
   .nav-folded .nav-badge { position: absolute; top: 2px; right: 2px; min-width: 18px; height: 18px; padding: 0 4px; }
-  .nav-folded .nav-eq { position: absolute; top: 4px; right: 6px; }
+  .nav-folded .nav-item .nav-eq { position: absolute; top: 4px; right: 6px; }
   .nav-folded .server { justify-content: center; padding: 10px; }
 }
 
@@ -558,7 +558,7 @@ kbd { font: .74rem var(--f-mono); border: 1px solid var(--line); border-bottom-w
   .nav-item > span:not(.nav-badge):not(.nav-eq) { flex: none; }
   .nav-badge { position: absolute; top: 4px; left: calc(50% + 8px); }
   .nav-soon { position: absolute; top: 2px; left: calc(50% + 6px); font-size: .55rem; padding: 1px 4px; }
-  .nav-eq { position: absolute; top: 8px; left: calc(50% + 12px); }
+  .nav-item .nav-eq { position: absolute; top: 8px; left: calc(50% + 12px); }
   .main { padding-bottom: calc(var(--tab-h) + 32px + env(safe-area-inset-bottom, 0px)); }
   /* phone order: player, then the song list, then practice tools */
   .pl-grid { display: flex; flex-direction: column; align-items: stretch; }
