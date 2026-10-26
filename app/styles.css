@@ -17,6 +17,8 @@
   --loop-soft: rgba(224, 137, 43, .16);
   --ear: #7a5af5;
   --ear-soft: rgba(122, 90, 245, .14);
+  --tune: #2f9e62;
+  --tune-soft: rgba(47, 158, 98, .14);
   --ok: #2f9e62;
   --danger: #d23f36;
   --shadow: 0 1px 2px rgba(16, 24, 40, .05), 0 4px 16px rgba(16, 24, 40, .06);
@@ -49,6 +51,8 @@
     --loop-soft: rgba(240, 160, 75, .18);
     --ear: #9d85ff;
     --ear-soft: rgba(157, 133, 255, .16);
+    --tune: #4cc283;
+    --tune-soft: rgba(76, 194, 131, .16);
     --ok: #4cc283;
     --danger: #ef6a60;
     --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 6px 20px rgba(0, 0, 0, .25);
@@ -719,3 +723,74 @@ kbd { font: .74rem var(--f-mono); border: 1px solid var(--line); border-bottom-w
   .ear-acts .btn { flex: 1; }
 }
 
+/* ------------------------------------------------------------------ tuner */
+.nav-item[data-nav="tuner"].active { background: var(--tune-soft); color: var(--tune); }
+.tuner-wrap { max-width: 640px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+.tuner-inst { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.tuner-chip {
+  padding: 7px 12px; border-radius: 99px; border: 1px solid var(--line); background: var(--surface); color: var(--ink-2);
+  font: 500 .85rem var(--f-body); cursor: pointer; transition: border-color .15s, background .15s;
+}
+.tuner-chip:hover { border-color: var(--tune); }
+.tuner-chip.on { background: var(--tune); border-color: var(--tune); color: #fff; }
+.tuner-card { padding: 22px 20px; display: flex; flex-direction: column; gap: 16px; }
+.tuner-meter { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.tuner-dial { position: relative; width: 100%; max-width: 420px; aspect-ratio: 2 / 1; overflow: hidden; }
+.tuner-dial::before {
+  content: ""; position: absolute; left: 0; right: 0; top: 0; aspect-ratio: 1; border-radius: 50%;
+  border: 2px solid var(--line); background: radial-gradient(circle at 50% 50%, var(--surface-2) 0 58%, transparent 58.5%);
+}
+.tuner-scale { position: absolute; inset: 10px 0 auto; display: flex; justify-content: space-between; padding: 0 14%; font: .68rem var(--f-mono); color: var(--muted); z-index: 1; }
+.tuner-scale span:nth-child(1), .tuner-scale span:nth-child(5) { margin-top: 26%; }
+.tuner-scale span:nth-child(2), .tuner-scale span:nth-child(4) { margin-top: 6%; }
+.tuner-scale span:nth-child(3) { color: var(--tune); font-weight: 700; }
+/* the ±5 cent band around the top */
+.tuner-zone { position: absolute; left: 50%; bottom: 0; width: 3px; height: 100%; transform: translateX(-50%); }
+.tuner-zone::before { content: ""; position: absolute; left: 50%; top: 0; width: 22px; height: 16px; transform: translateX(-50%); border-radius: 0 0 6px 6px; background: var(--tune-soft); }
+.tuner-needle {
+  position: absolute; left: calc(50% - 2px); bottom: 0; width: 4px; height: 92%; border-radius: 4px 4px 0 0;
+  background: var(--danger); transform-origin: 50% 100%; transition: background .2s;
+}
+.tuner-needle::after { content: ""; position: absolute; left: 50%; bottom: -10px; width: 20px; height: 20px; transform: translateX(-50%); border-radius: 50%; background: inherit; }
+.tuner-meter.ok .tuner-needle { background: var(--tune); }
+.tuner-meter.idle .tuner-needle { background: var(--muted); opacity: .4; }
+.tuner-readout { text-align: center; margin-top: 4px; }
+.tuner-note { display: inline-flex; align-items: flex-end; line-height: 1; }
+.tuner-note b { font: 700 4.6rem/1 var(--f-display); color: var(--ink); transition: color .2s; }
+.tuner-note sub { font: 600 1.4rem var(--f-mono); color: var(--muted); margin: 0 0 6px 4px; }
+.tuner-meter.ok .tuner-note b { color: var(--tune); }
+.tuner-meter.idle .tuner-note b { color: var(--muted); }
+.tuner-solfa { font: italic .95rem var(--f-body); color: var(--muted); min-height: 1.3em; }
+.tuner-sub { display: flex; gap: 14px; justify-content: center; font: .85rem var(--f-mono); color: var(--ink-2); min-height: 1.3em; }
+.tuner-hint { margin: 4px 0 0; text-align: center; font-weight: 600; font-size: .95rem; color: var(--muted); min-height: 1.4em; }
+.tuner-hint.ok { color: var(--tune); }
+.tuner-hint.near { color: var(--loop); }
+.tuner-hint.far { color: var(--danger); }
+.tuner-strings { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
+.tuner-string {
+  position: relative; width: 58px; padding: 8px 0 7px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink);
+  display: flex; flex-direction: column; align-items: center; cursor: pointer; transition: border-color .15s, background .15s, transform .06s;
+}
+.tuner-string:active { transform: scale(.95); }
+.tuner-string small { font: .62rem var(--f-mono); color: var(--muted); }
+.tuner-string b { font: 700 1.2rem/1.1 var(--f-display); }
+.tuner-string span { font: .7rem var(--f-mono); color: var(--muted); }
+.tuner-string:hover, .tuner-string.active { border-color: var(--tune); }
+.tuner-string.active { box-shadow: 0 0 0 3px var(--tune-soft); }
+.tuner-string.ok { background: var(--tune); border-color: var(--tune); color: #fff; }
+.tuner-string.ok small, .tuner-string.ok span { color: rgba(255, 255, 255, .8); }
+.tuner-string.locked::after { content: ""; position: absolute; top: 5px; right: 5px; width: 6px; height: 6px; border-radius: 50%; background: var(--tune); }
+.tuner-card .ear-small { margin: 0; }
+.tuner-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; border-top: 1px solid var(--line); padding-top: 14px; }
+#view-tuner .btn.primary { background: var(--tune); border-color: var(--tune); color: #fff; box-shadow: 0 4px 14px var(--tune-soft); }
+#tunerA4 { font: 600 .85rem var(--f-mono); color: var(--ink-2); padding: 0 6px; }
+@media (max-width: 640px) {
+  .tuner-card { padding: 16px 14px; }
+  .tuner-note b { font-size: 3.8rem; }
+  .tuner-inst { flex-wrap: nowrap; justify-content: flex-start; overflow-x: auto; scrollbar-width: none; margin: 0 -14px; padding: 0 14px; }
+  .tuner-chip { flex: none; }
+  .tuner-strings { flex-wrap: nowrap; gap: 6px; }
+  .tuner-string { width: auto; flex: 1; max-width: 54px; }
+  .tuner-foot .btn { flex: 1; }
+  .tuner-foot { justify-content: center; }
+}

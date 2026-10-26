@@ -57,6 +57,8 @@
     <symbol id="i-sparkle" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
     <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 3L5 13.5h6L10 21l8-10.5h-6z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
     <symbol id="i-ear" viewBox="0 0 24 24"><path d="M7 9a5 5 0 0 1 10 0c0 3-2.5 3.8-3.2 6-.5 1.6-1.4 3.5-3.8 3.5A2.8 2.8 0 0 1 7.2 16M10 9.5a2 2 0 0 1 4 0c0 1.2-1.2 1.6-1.6 2.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-tuner" viewBox="0 0 24 24"><path d="M9 3v7a3 3 0 0 0 6 0V3M12 13v8M9 21h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
     <symbol id="i-mac" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 20h8M12 16v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
   </defs>
 </svg>
@@ -79,6 +81,9 @@
     </a>
     <a class="nav-item" href="#/perfect-pitch" data-nav="ear" title="Perfect Pitch">
       <svg><use href="#i-ear"/></svg><span>Perfect Pitch</span>
+    </a>
+    <a class="nav-item" href="#/tuner" data-nav="tuner" title="Tuner">
+      <svg><use href="#i-tuner"/></svg><span>Tuner</span>
     </a>
     <div class="nav-foot">
       <button class="nav-item ghost" type="button" id="tourBtn" title="Cara pakai Encore"><svg><use href="#i-help"/></svg><span>Cara pakai</span></button>
@@ -393,6 +398,43 @@
       </div>
       <section class="card ear-session" id="earSession" hidden></section>
     </section>
+    <!-- ============================================================ TUNER -->
+    <section class="view" id="view-tuner" data-view="tuner" hidden>
+      <header class="page-head">
+        <div>
+          <p class="eyebrow">Tuner</p>
+          <h1>Stem gitar, bass, dan lainnya</h1>
+        </div>
+      </header>
+      <div class="tuner-wrap">
+        <div class="tuner-inst" id="tunerInst"></div>
+        <section class="card tuner-card">
+          <div class="tuner-meter idle" id="tunerMeter">
+            <div class="tuner-dial">
+              <div class="tuner-scale"><span>-50</span><span>-25</span><span>0</span><span>+25</span><span>+50</span></div>
+              <div class="tuner-zone"></div>
+              <div class="tuner-needle" id="tunerNeedle"></div>
+            </div>
+            <div class="tuner-readout">
+              <div class="tuner-note"><b id="tunerNote">–</b><sub id="tunerOct"></sub></div>
+              <div class="tuner-solfa" id="tunerSolfa"></div>
+              <div class="tuner-sub"><span id="tunerHz"></span><span id="tunerCents"></span></div>
+            </div>
+            <p class="tuner-hint" id="tunerHint"></p>
+          </div>
+          <div class="tuner-strings" id="tunerStrings"></div>
+          <p class="ear-small center" id="tunerLockNote"></p>
+          <div class="tuner-foot">
+            <button class="btn primary" type="button" id="tunerToggle"><svg><use href="#i-mic"/></svg><span>Mulai tuner</span></button>
+            <div class="ear-stepper">
+              <button class="icon-btn" type="button" id="tunerA4Minus" title="Turunkan nada acuan"><svg><use href="#i-down"/></svg></button>
+              <button class="link-btn" type="button" id="tunerA4" title="Nada acuan (klik untuk kembali ke 440)"></button>
+              <button class="icon-btn" type="button" id="tunerA4Plus" title="Naikkan nada acuan"><svg><use href="#i-up"/></svg></button>
+            </div>
+          </div>
+        </section>
+      </div>
+    </section>
   </main>
 </div>
 
@@ -526,6 +568,13 @@ https://youtu.be/…"></textarea>
           <dt><kbd>Enter</kbd></dt><dd>mulai / lihat jawaban / soal berikutnya</dd>
           <dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>level sebelumnya / berikutnya</dd>
           <dt><kbd>Esc</kbd></dt><dd>keluar dari latihan</dd>
+        </dl>
+      </div>
+      <div>
+        <h3>Tuner</h3>
+        <dl class="keys">
+          <dt><kbd>Space</kbd></dt><dd>nyalakan / matikan mikrofon</dd>
+          <dt><kbd>1</kbd>–<kbd>6</kbd></dt><dd>bunyikan &amp; kunci senar</dd>
         </dl>
       </div>
     </div>
