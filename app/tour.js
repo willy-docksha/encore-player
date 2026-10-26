@@ -12,7 +12,7 @@ const steps = () => [
   {
     target: null,
     title: "Selamat datang di Encore 👋",
-    text: "Tempat latihan lagu: putar berulang, pelankan, dan loop bagian yang sulit sampai hafal. Ikuti tur singkat ini, cuma sekitar 1 menit.",
+    text: "Teman latihan musikmu: putar dan loop lagu sampai hafal, bedah instrumennya, latih telinga, dan stem alatmu. Ikuti tur singkat ini, cuma sekitar 1 menit.",
   },
   {
     target: "#openEditor",
@@ -57,8 +57,18 @@ const steps = () => [
       : "Pisahkan vokal, drum, bass, dan instrumen lain, lengkap dengan not dan chord-nya. Jalan di Encore App (gratis) untuk Mac, Windows, dan Linux.",
   },
   {
+    target: '.nav-item[data-nav="ear"]',
+    title: "9. Perfect Pitch",
+    text: "Latih telinga mengenali nada tanpa acuan, level demi level dari 7 not natural sampai akor. Progresnya tersimpan di browser ini.",
+  },
+  {
+    target: '.nav-item[data-nav="tuner"]',
+    title: "10. Tuner",
+    text: "Stem gitar, bass 4/5 senar, ukulele, atau biola lewat mikrofon. Juga bisa cek nada apa yang sedang kamu nyanyikan atau mainkan.",
+  },
+  {
     target: "#shortcutsBtn",
-    title: "9. Shortcut keyboard",
+    title: "11. Shortcut keyboard",
     text: "Di laptop, semuanya bisa lewat keyboard: Spasi untuk play/pause, ← → untuk mundur/maju, A dan B untuk loop, M untuk mute. Daftar lengkapnya ada di sini.",
   },
   {

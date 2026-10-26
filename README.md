@@ -1,9 +1,13 @@
 # Encore
 
-Sekali lagi, sampai hafal. Encore punya dua bagian:
+Teman latihan musikmu. Encore punya empat bagian:
 
-- **Playlist**: media player latihan dari link YouTube dan Google Drive. Jalan di mana saja, termasuk Vercel dan HP.
+- **Playlist**: media player latihan dari link YouTube dan Google Drive, dengan loop A–B dan kecepatan. Jalan di mana saja, termasuk Vercel dan HP.
 - **Breakdown**: memisahkan instrumen (drum, bass, vokal, gitar, piano, lainnya), menampilkan not bass, melodi vokal, dan chord-nya. Prosesnya berat, jadi Breakdown hanya jalan di **Encore App** (Mac, Windows, Linux) di komputer pengguna. Di versi web, menu Breakdown berisi halaman download app-nya.
+- **Perfect Pitch**: latihan mengenali nada tanpa acuan, level demi level.
+- **Tuner**: stem gitar, bass, ukulele, atau biola lewat mikrofon, sekaligus cek nada apa yang sedang masuk.
+
+Playlist, Perfect Pitch, dan Tuner jalan langsung di browser (web maupun Encore App).
 
 ## Playlist
 
@@ -48,6 +52,21 @@ File Google Drive harus dibagikan sebagai **"Siapa saja yang memiliki link"**.
 - Butuh laptop/PC, RAM 8 GB+. Di Mac chip Apple lagu 4 menit selesai dalam beberapa menit; di Windows/Linux tanpa GPU NVIDIA (build-nya CPU) bisa jauh lebih lama
 - Link YouTube butuh `deno` atau `node` terpasang di komputer itu supaya selalu bisa diunduh; tanpa itu sebagian video bisa gagal. Upload file atau link Drive selalu bisa
 - App belum ditandatangani Apple/Microsoft, jadi pertama kali dibuka muncul peringatan (lihat halaman Breakdown di web atau catatan rilis)
+
+## Perfect Pitch
+
+- 60 level dalam 5 tahap: **Pemula** (7 not natural) → **Dasar** (lengkap 12 not) → **Menengah** (2–3 oktaf, suara organ) → **Mahir** (semua warna suara, bunyi lebih singkat, akor mayor) → **Master** (4 oktaf, akor mayor & minor)
+- Tiap level: pemanasan (putar not-notnya sesuka hati), lalu kuis. Lulus kalau benar minimal 80%; tiap tahap ditutup ujian
+- Jawab lewat keyboard piano di layar atau tombol `C`–`B` (Shift untuk ♯)
+- Tanpa akun: progres disimpan di browser, dan ikut tersinkron antara versi online dan Encore App di browser yang sama. Level mana pun bisa langsung dipilih
+
+## Tuner
+
+- Mendeteksi nada dari mikrofon (algoritma YIN): nama not + oktaf, solfa, frekuensi (Hz), dan selisihnya dalam sen. Jarum hijau kalau selisihnya ±5 sen
+- Pilihan alat: **Kromatik**, **Gitar**, **Gitar Drop D**, **Bass 4 senar**, **Bass 5 senar** (sampai B rendah ±31 Hz), **Ukulele**, **Biola**
+- Senar terdekat dipilih otomatis, dengan petunjuk kencangkan/kendorkan. Klik senar untuk mendengar nada acuannya dan mengunci tuner ke senar itu
+- Nada acuan A4 bisa diubah (415–466 Hz, standar 440)
+- Butuh izin mikrofon dan HTTPS (atau localhost). Mikrofon otomatis mati saat pindah halaman
 
 ## Encore App
 
@@ -99,7 +118,7 @@ Import repo ini di Vercel, pilih Framework Preset **Other**, lalu Deploy. Yang t
 
 | Path | Isi |
 |---|---|
-| `index.html`, `app/` | Tampilan: `core.js`, `playlist.js`, `bass.js`, `aimode.js` (mode cepat/AI), `getapp.js` (halaman download), `main.js`, `styles.css` |
+| `index.html`, `app/` | Tampilan: `core.js`, `playlist.js`, `bass.js` (Breakdown), `ear.js` (Perfect Pitch), `tuner.js` (Tuner), `aimode.js` (mode cepat/AI), `getapp.js` (halaman download), `sync.js`, `tour.js` (tur Cara pakai), `main.js`, `styles.css` |
 | `app/config.js` | Alamat rilis Encore App |
 | `api/` | Fungsi Vercel untuk Drive & judul |
 | `backend/app.py` | Server Encore App: antrian, library, file stem/MIDI, Drive & judul |
@@ -115,3 +134,7 @@ Import repo ini di Vercel, pilih Framework Preset **Other**, lalu Deploy. Yang t
 **Playlist:** `Space` play/pause · `N`/`P` next/prev · `S` stop · `R` mode ulang · `←`/`→` 5 detik · `J`/`L` 10 detik · `[`/`]` kecepatan · `A`/`B`/`C` loop A–B
 
 **Breakdown:** `Space` play/pause · `←`/`→` 2 detik · `A`/`B` titik loop · `L` loop on/off · `Esc` hapus loop · `M` multitrack · `V` bagian berikutnya · `T` grafik ↔ tab (bass, gitar) · `1`–`6` mute kanal mixer
+
+**Perfect Pitch:** `Space` putar soal lagi · `C`–`B` jawab not (Shift untuk ♯) · `Enter` mulai / lihat jawaban / soal berikutnya · `←`/`→` level sebelumnya / berikutnya · `Esc` keluar dari latihan
+
+**Tuner:** `Space` nyalakan/matikan mikrofon · `1`–`6` bunyikan & kunci senar

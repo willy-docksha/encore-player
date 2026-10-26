@@ -1,6 +1,7 @@
 {
   "name": "Encore Player",
   "short_name": "Encore",
+  "description": "Teman latihan musik: playlist latihan, breakdown lagu, perfect pitch, dan tuner.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#12151b",
