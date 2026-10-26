@@ -1,7 +1,8 @@
 // ear training toward perfect (absolute) pitch: one path of levels in five stages.
 // there are no profiles, so any level can be picked; results stay in this browser (store).
 
-import { $, el, icon, store, media, onKeys, toast } from "./core.js";
+import { $, el, icon, store, media, onKeys, toast, router } from "./core.js";
+import { onRemote } from "./sync.js";
 
 const NAMES = ["C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B"];
 const FLATS = ["", "D♭", "", "E♭", "", "", "G♭", "", "A♭", "", "B♭", ""];
@@ -183,6 +184,13 @@ function pickLevel(n) {
 }
 
 export function enterEar() { render(); }
+
+// the online site or the app saved progress: show it, a running quiz carries on undisturbed
+onRemote((keys) => {
+  if (!keys.some((k) => k.startsWith("pitch-")) || session) return;
+  current = store.get("pitch-level", 0) || suggestedLevel();
+  if (router.current === "ear") render();
+});
 
 function render() {
   $("#earHome").hidden = !!session;
