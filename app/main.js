@@ -4,8 +4,10 @@ import { $, router, server, store } from "./core.js";
 import { initPlaylist, onSendToBass } from "./playlist.js";
 import { initBass, enterBassHome, enterSong, leaveSong, submitLink } from "./bass.js";
 import { startTour, maybeStartTour } from "./tour.js";
+import { initEar, enterEar } from "./ear.js";
 
 router.add(/^#\/?$/, "playlist", () => { leaveSong(); document.title = "Encore"; });
+router.add(/^#\/perfect-pitch\/?$/, "ear", () => { leaveSong(); enterEar(); document.title = "Perfect Pitch · Encore"; });
 router.add(/^#\/breakdown\/?$/, "bass", () => enterBassHome());
 router.add(/^#\/breakdown\/(\w+)$/, "song", (id) => enterSong(id));
 // older links (ngulik, bass section, delve)
@@ -32,6 +34,7 @@ $("#navFold").onclick = () => setFolded(!document.querySelector(".shell").classL
 
 initBass();
 initPlaylist();
+initEar();
 // its first, synchronous part only saved the defaults; from here on saved changes count as the newest (sync.js)
 store.booting = false;
 // the bass pages depend on the local server, so learn whether it is there before routing

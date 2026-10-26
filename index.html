@@ -56,6 +56,7 @@
     <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="16" cy="7" r="2.2" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="10" cy="17" r="2.2" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
     <symbol id="i-sparkle" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
     <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 3L5 13.5h6L10 21l8-10.5h-6z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+    <symbol id="i-ear" viewBox="0 0 24 24"><path d="M7 9a5 5 0 0 1 10 0c0 3-2.5 3.8-3.2 6-.5 1.6-1.4 3.5-3.8 3.5A2.8 2.8 0 0 1 7.2 16M10 9.5a2 2 0 0 1 4 0c0 1.2-1.2 1.6-1.6 2.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
     <symbol id="i-mac" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 20h8M12 16v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
   </defs>
 </svg>
@@ -75,6 +76,9 @@
       <svg><use href="#i-bass"/></svg><span>Breakdown</span>
       <span class="nav-badge" id="navBadge" hidden></span>
       <span class="nav-soon" id="navSoon" hidden>App</span>
+    </a>
+    <a class="nav-item" href="#/perfect-pitch" data-nav="ear" title="Perfect Pitch">
+      <svg><use href="#i-ear"/></svg><span>Perfect Pitch</span>
     </a>
     <div class="nav-foot">
       <button class="nav-item ghost" type="button" id="tourBtn" title="Cara pakai Encore"><svg><use href="#i-help"/></svg><span>Cara pakai</span></button>
@@ -356,6 +360,39 @@
       </div>
       <div id="stemAudio" hidden></div>
     </section>
+    <!-- ============================================================ EAR TRAINING -->
+    <section class="view" id="view-ear" data-view="ear" hidden>
+      <header class="page-head">
+        <div>
+          <p class="eyebrow">Perfect Pitch</p>
+          <h1>Latih telinga, naik level demi level</h1>
+        </div>
+        <div class="head-actions"><span class="count" id="earStreak"></span></div>
+      </header>
+
+      <div id="earHome">
+        <div class="ear-grid">
+          <section class="card ear-days-card">
+            <div class="block-head">
+              <h3>Pilih level <span class="count" id="earDone"></span></h3>
+              <div class="ear-stepper">
+                <button class="icon-btn" type="button" id="earMinus" title="Level sebelumnya (←)"><svg><use href="#i-back"/></svg></button>
+                <label>Level <input id="earDayInput" type="number" min="1" inputmode="numeric" aria-label="Nomor level"> <span id="earDayMax"></span></label>
+                <button class="icon-btn" type="button" id="earPlus" title="Level berikutnya (→)"><svg style="transform:scaleX(-1)"><use href="#i-back"/></svg></button>
+              </div>
+            </div>
+            <div class="ear-stages" id="earLevels"></div>
+            <div class="ear-legend">
+              <span><i class="pass"></i>lulus</span><span><i class="tried"></i>belum lulus</span><span><i class="review"></i>ujian tahap</span>
+              <button class="link-btn" type="button" id="earToday"></button>
+            </div>
+            <p class="ear-small">Tidak ada akun: progres hanya tersimpan di browser ini. Pindah perangkat atau cache terhapus? Pilih saja level terakhirmu.</p>
+          </section>
+          <section class="card ear-lesson" id="earLesson"></section>
+        </div>
+      </div>
+      <section class="card ear-session" id="earSession" hidden></section>
+    </section>
   </main>
 </div>
 
@@ -479,6 +516,16 @@ https://youtu.be/…"></textarea>
           <dt><kbd>1</kbd>–<kbd>6</kbd></dt><dd>mute kanal mixer</dd>
           <dt>klik / Shift+drag</dt><dd>lompat / pilih loop di grafik</dd>
           <dt>klik nama lajur</dt><dd>mute / unmute (multitrack)</dd>
+        </dl>
+      </div>
+      <div>
+        <h3>Perfect Pitch</h3>
+        <dl class="keys">
+          <dt><kbd>Space</kbd></dt><dd>putar soal lagi</dd>
+          <dt><kbd>C</kbd>–<kbd>B</kbd></dt><dd>jawab not (Shift untuk ♯)</dd>
+          <dt><kbd>Enter</kbd></dt><dd>mulai / lihat jawaban / soal berikutnya</dd>
+          <dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>level sebelumnya / berikutnya</dd>
+          <dt><kbd>Esc</kbd></dt><dd>keluar dari latihan</dd>
         </dl>
       </div>
     </div>
